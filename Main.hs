@@ -27,7 +27,10 @@ data GUI = GUI { guiW1 :: Window
                , guiToonCB
                , guiProfCB :: ComboBox
                , guiEditProfB
-               , guiHelpCloseB :: Button
+               , guiHelpCloseB
+               , guiStatOkB
+               , guiStatCancelB :: Button
+               , guiStatScales :: [(String, HScale)]
                }
 
 type Settings = IORef [(String, String)]
@@ -84,7 +87,6 @@ analyze (Arr a) = do
   return ()
 analyze _ = putStrLn "Mal-formed saved variables"
 
-
 loadGlade :: IO GUI
 loadGlade = do
   builder <- builderNew         -- GTKBuilder format
@@ -97,20 +99,28 @@ loadGlade = do
     ["quittoolbutton", "configtoolbutton", "helptoolbutton"]
   [accountCB, toonCB, profCB] <- mapM (find castToComboBox)
     ["accountcombobox", "tooncombobox", "profcombobox"]
-  [editProfB, helpCloseB] <- mapM (find castToButton)
-    ["editprofbutton", "helpclosebutton"]
-  return $ GUI { guiW1         = w1
-               , guiConfigD    = configD
-               , guiHelpD      = helpD
-               , guiStatD      = statD
-               , guiQuitTB     = quitTB
-               , guiConfigTB   = configTB
-               , guiHelpTB     = helpTB
-               , guiAccountCB  = accountCB
-               , guiToonCB     = toonCB
-               , guiProfCB     = profCB
-               , guiEditProfB  = editProfB
-               , guiHelpCloseB = helpCloseB
+  [editProfB, helpCloseB, statOkB, statCancelB] <- mapM (find castToButton)
+    ["editprofbutton", "helpclosebutton", "statok", "statcancel"]
+  hscales <- forM stathscales $ \ (scaleName, statName) -> do
+    s <- find castToHScale scaleName
+    rangeSetRange s 0 25
+    rangeSetIncrements s 0.1 1.0
+    return (statName, s)
+  return $ GUI { guiW1          = w1
+               , guiConfigD     = configD
+               , guiHelpD       = helpD
+               , guiStatD       = statD
+               , guiQuitTB      = quitTB
+               , guiConfigTB    = configTB
+               , guiHelpTB      = helpTB
+               , guiAccountCB   = accountCB
+               , guiToonCB      = toonCB
+               , guiProfCB      = profCB
+               , guiEditProfB   = editProfB
+               , guiHelpCloseB  = helpCloseB
+               , guiStatOkB     = statOkB
+               , guiStatCancelB = statCancelB
+               , guiStatScales  = hscales
                }
 
 connectGUI s = do
@@ -126,6 +136,7 @@ connectGUI s = do
   -- comboboxes  
   guiAccountCB gui `on` changed $ comboBoxChangeFun "account" (guiAccountCB gui)
   guiToonCB gui `on` changed $ comboBoxChangeFun "toon" (guiToonCB gui)
+  guiProfCB gui `on` changed $ comboBoxChangeFun "prof" (guiProfCB gui)
 
   onClicked (guiEditProfB gui) (widgetShow (guiStatD gui))
 
@@ -161,7 +172,7 @@ refreshMainWin s = do
   wow <- getSetting s "folder"
   whenIO (doesDirectoryExist (accountFolder wow)) $ do
     accounts <- lsDir (accountFolder wow)
-    mapM_ (comboBoxAppendText (guiAccountCB gui)) accounts
+    forM_ accounts $ comboBoxAppendText (guiAccountCB gui)
     account <- getSetting s "account"
     case findIndex (==account) accounts of
       Just i  -> comboBoxSetActive (guiAccountCB gui) i
@@ -170,16 +181,35 @@ refreshMainWin s = do
     whenIO (isJust `fmap` get (db s)) $ do
       Arr pkeys <- ((|-> "profileKeys") . fromJust) `fmap` get (db s)
       let toons = mapMaybe (\ (k, _) -> case k of Str s -> Just s; _ -> Nothing) pkeys
-      mapM_ (comboBoxAppendText (guiToonCB gui)) toons
+      forM_ toons $ comboBoxAppendText (guiToonCB gui)
       toon <- getSetting s "toon"
       case findIndex (==toon) toons of
         Nothing -> return ()
         Just i  -> do
           comboBoxSetActive (guiToonCB gui) i
-          Str profKey <- ((|-> toon) . (|-> "profileKeys") . fromJust) `fmap` get (db s)
-          Arr profs <- ((|-> "profiles") . (|-> profKey) . (|-> "profiles") . fromJust) `fmap` get (db s)
-          print profs
+          Str profKey <- (flip derefExpr [Str "profileKeys", Str toon] . fromJust) `fmap` get (db s)
+          Arr profs <- (flip derefExpr [Str "profiles", Str profKey, Str "profiles"] . fromJust) `fmap` get (db s)
+          let profNames = flip map profs $ \ (Str name, _) -> name
+          forM_ profNames $ comboBoxAppendText (guiProfCB gui)
+          prof <- getSetting s "prof"
+          case findIndex (==prof) profNames of
+            Nothing -> return ()
+            Just i  -> comboBoxSetActive (guiProfCB gui) i
 
+showStatDialog s = do
+  let gui = stateGUI s
+  whenIO (isJust `fmap` get (db s)) $ do
+    toon <- getSetting s "toon"
+    prof <- getSetting s "prof"
+    when (not (null prof) && not (null prof)) $ do
+      Str profKey <- (flip derefExpr [Str "profileKeys", Str toon] . fromJust) `fmap` get (db s)
+      profs <- (flip derefExpr [Str "profiles", Str profKey, Str "profiles"] . fromJust) `fmap` get (db s)
+      let Arr ptable = profs |-> prof
+      forM_ (guiStatScales gui) $ \ (stat, scale) ->
+        case lookup (Str stat) ptable of
+          Just (Num x) -> rangeSetValue scale x
+          Nothing      -> rangeSetValue scale 0
+      widgetShow (guiStatD gui)
 
 
 comboBoxTextClear cb = cellLayoutClear cb >> comboBoxSetModelText cb
@@ -191,3 +221,30 @@ Arr a |-> str = maybe (Arr []) id (lookup (Str str) a)
 x $= v = writeIORef x v
 x $~ f = (f `fmap` readIORef x) >>= writeIORef x
 get x = readIORef x
+
+stathscales =
+  [ ("strhscale", "STR")
+  , ("agihscale", "AGI")
+  , ("stahscale", "STA")
+  , ("inthscale", "INT")
+  , ("spihscale", "SPI")
+  , ("mashscale", "MASTERY_RATING")
+  , ("dpshscale", "DPS")
+  , ("sphscale", "SPELL_DMG")
+  , ("hithscale", "MELEE_HIT_RATING")
+  , ("crithscale", "MELEE_CRIT_RATING")
+  , ("hastehscale", "MELEE_HASTE_RATING")
+  , ("exphscale", "EXPERTISE_RATING")
+  , ("penhscale", "SPELLPEN")
+  , ("maxdmghscale", "MAX_DAMAGE")
+  , ("armorhscale", "ARMOR")
+  , ("bonusarmorhscale", "ARMOR_BONUS")
+  , ("dodgehscale", "DODGE_RATING")
+  , ("parryhscale", "PARRY_RATING")
+  , ("resilhscale", "RESILIENCE_RATING")
+  , ("regenhscale", "HEALTH_REG")
+  , ("firehscale", "FIRE_RES")
+  , ("naturehscale", "NATURE_RES")
+  , ("frosthscale", "FROST_RES")
+  , ("shadowhscale", "SHADOW_RES")
+  , ("arcanehscale", "ARCANE_RES") ]
