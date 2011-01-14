@@ -1,5 +1,6 @@
 module LuaParser
-  ( parseLuaFile, parseLua, LuaStmt (..), LuaExpr (..), ParseError )
+  ( parseLuaFile, parseLua, LuaStmt (..), LuaExpr (..), ParseError
+  , derefExpr, modifyExpr, pruneExpr )
 where
 import Data.Maybe
 import Numeric
@@ -92,3 +93,24 @@ parseLuaFile = parseFromFile lua
 
 parseLua :: SourceName -> String -> Either ParseError LuaStmt
 parseLua = parse lua
+
+derefExpr e [] = e
+derefExpr (Arr a) (n:ns) =
+  case lookup n a of
+    Just e  -> derefExpr e ns
+    Nothing -> Arr []
+derefExpr e _ = e
+
+modifyExpr _ [] v = v
+modifyExpr (Arr a) (n:ns) v =
+  case lookup n a of
+    Just e  -> Arr $ (n, modifyExpr e ns v) : filter ((/=n) . fst) a
+    Nothing -> Arr $ (n, v) : a
+modifyExpr e _ _ = e
+
+pruneExpr (Arr a) (n:[]) = Arr (filter ((/=n) . fst) a)
+pruneExpr (Arr a) (n:ns) =
+  case lookup n a of
+    Just e  -> Arr $ (n, pruneExpr e ns) : filter ((/=n) . fst) a
+    Nothing -> Arr a
+pruneExpr e _ = e
