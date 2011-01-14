@@ -80,6 +80,19 @@ loadDB s = handle failureCase $ do
   where failureCase :: SomeException -> IO Bool
         failureCase _ = db s $= Nothing >> return False
 
+saveDB s = handle failureCase $ do
+  wow  <- getSetting s "folder"
+  acnt <- getSetting s "account"
+  m_e <- get (db s)
+  case m_e of
+    Nothing -> return False
+    Just e  -> do
+      writeFile (dbFile wow acnt) (show (Assign "ConsideraterDB" e))
+      return True
+  where failureCase :: SomeException -> IO Bool
+        failureCase _ = db s $= Nothing >> return False
+
+
 analyze (Arr a) = do
   case lookup (Str "profileKeys") a of
     Just (Arr pkeys) -> print (map fst pkeys)
@@ -138,7 +151,9 @@ connectGUI s = do
   guiToonCB gui `on` changed $ comboBoxChangeFun "toon" (guiToonCB gui)
   guiProfCB gui `on` changed $ comboBoxChangeFun "prof" (guiProfCB gui)
 
-  onClicked (guiEditProfB gui) (widgetShow (guiStatD gui))
+  onClicked (guiEditProfB gui) $ showStatDialog s
+  onClicked (guiStatCancelB gui) $ widgetHide (guiStatD gui)
+  onClicked (guiStatOkB gui) $ saveStats s >> widgetHide (guiStatD gui)
 
   -- help
   onToolButtonClicked (guiHelpTB gui) (widgetShow (guiHelpD gui))
@@ -211,6 +226,19 @@ showStatDialog s = do
           Nothing      -> rangeSetValue scale 0
       widgetShow (guiStatD gui)
 
+saveStats s = do
+  let gui = stateGUI s
+  whenIO (isJust `fmap` get (db s)) $ do
+    toon <- getSetting s "toon"
+    prof <- getSetting s "prof"
+    when (not (null prof) && not (null prof)) $ do
+      Str profKey <- (flip derefExpr [Str "profileKeys", Str toon] . fromJust) `fmap` get (db s)
+      newTable <- forM (guiStatScales gui) $ \ (stat, scale) -> do
+        x <- rangeGetValue scale
+        return (Str stat, Num x)
+      db s $~ \ (Just e) -> Just $ modifyExpr e [Str "profiles", Str profKey, Str "profiles", Str prof] (Arr newTable)
+      saveDB s
+      return ()
 
 comboBoxTextClear cb = cellLayoutClear cb >> comboBoxSetModelText cb
 
