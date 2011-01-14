@@ -28,9 +28,14 @@ data GUI = GUI { guiW1 :: Window
                , guiProfCB :: ComboBox
                , guiEditProfB
                , guiHelpCloseB
+               , guiCfgOkB
+               , guiCfgCancelB
                , guiStatOkB
                , guiStatCancelB :: Button
                , guiStatScales :: [(String, HScale)]
+               , guiHelpTV :: TextView
+               , guiWoWFolderFC
+               , guiSimCProgFC :: FileChooser
                }
 
 type Settings = IORef [(String, String)]
@@ -112,13 +117,19 @@ loadGlade = do
     ["quittoolbutton", "configtoolbutton", "helptoolbutton"]
   [accountCB, toonCB, profCB] <- mapM (find castToComboBox)
     ["accountcombobox", "tooncombobox", "profcombobox"]
-  [editProfB, helpCloseB, statOkB, statCancelB] <- mapM (find castToButton)
-    ["editprofbutton", "helpclosebutton", "statok", "statcancel"]
+  [ editProfB, helpCloseB, statOkB, statCancelB, cfgOkB, cfgCancelB ]
+    <- mapM (find castToButton)
+    [ "editprofbutton", "helpclosebutton", "statok", "statcancel"
+    , "configok", "configcancel" ]
   hscales <- forM stathscales $ \ (scaleName, statName) -> do
     s <- find castToHScale scaleName
     rangeSetRange s 0 25
     rangeSetIncrements s 0.1 1.0
     return (statName, s)
+  [helpTV] <- mapM (find castToTextView)
+    ["helptextview"]
+  [folderFC, simcFC] <- mapM (find castToFileChooser)
+    ["wowfolderfilechooser", "simcfilechooser"]
   return $ GUI { guiW1          = w1
                , guiConfigD     = configD
                , guiHelpD       = helpD
@@ -133,31 +144,56 @@ loadGlade = do
                , guiHelpCloseB  = helpCloseB
                , guiStatOkB     = statOkB
                , guiStatCancelB = statCancelB
+               , guiCfgOkB      = cfgOkB
+               , guiCfgCancelB  = cfgCancelB
                , guiStatScales  = hscales
+               , guiHelpTV      = helpTV
+               , guiWoWFolderFC = folderFC
+               , guiSimCProgFC  = simcFC
                }
 
 connectGUI s = do
   let gui = stateGUI s
 
   -- quit buttons
-  onDestroy (guiW1 gui) mainQuit
-  onToolButtonClicked (guiQuitTB gui) mainQuit
+  guiW1 gui `onDestroy` mainQuit
+  guiQuitTB gui `onToolButtonClicked` mainQuit
 
   -- options
-  onToolButtonClicked (guiConfigTB gui) (showConfigWin s)
-  
+  ff <- fileFilterNew
+  fileFilterSetName ff "simc"
+  fileFilterAddPattern ff "simc"
+  fileFilterAddPattern ff "simc.exe"
+  fileChooserSetFilter (guiSimCProgFC gui) ff
+  guiConfigTB gui `onToolButtonClicked` do
+    folder <- getSetting s "folder"
+    fileChooserSetCurrentFolder (guiWoWFolderFC gui) folder
+    simc <- getSetting s "simc"
+    unless (null simc) $ fileChooserSetFilename (guiSimCProgFC gui) simc >> return ()
+    widgetShow (guiConfigD gui)
+  guiCfgCancelB gui `onClicked` widgetHide (guiConfigD gui)
+  guiCfgOkB gui `onClicked` do
+    m_folder <- fileChooserGetCurrentFolder (guiWoWFolderFC gui)
+    m_simc <- fileChooserGetFilename (guiSimCProgFC gui)
+    when (isJust m_folder) $ setSetting s "folder" (fromJust m_folder)
+    when (isJust m_simc) $ setSetting s "simc" (fromJust m_simc)
+    widgetHide (guiConfigD gui)
+
   -- comboboxes  
   guiAccountCB gui `on` changed $ comboBoxChangeFun "account" (guiAccountCB gui)
   guiToonCB gui `on` changed $ comboBoxChangeFun "toon" (guiToonCB gui)
   guiProfCB gui `on` changed $ comboBoxChangeFun "prof" (guiProfCB gui)
 
-  onClicked (guiEditProfB gui) $ showStatDialog s
-  onClicked (guiStatCancelB gui) $ widgetHide (guiStatD gui)
-  onClicked (guiStatOkB gui) $ saveStats s >> widgetHide (guiStatD gui)
+  -- edit profile buttons
+  guiEditProfB gui `onClicked` showStatDialog s
+  guiStatCancelB gui `onClicked` widgetHide (guiStatD gui)
+  guiStatOkB gui `onClicked` saveStats s >> widgetHide (guiStatD gui)
 
   -- help
-  onToolButtonClicked (guiHelpTB gui) (widgetShow (guiHelpD gui))
-  onClicked (guiHelpCloseB gui) (widgetHide (guiHelpD gui))
+  guiHelpTB gui `onToolButtonClicked` widgetShow (guiHelpD gui)
+  guiHelpCloseB gui `onClicked` widgetHide (guiHelpD gui)
+  helpTB <- textViewGetBuffer (guiHelpTV gui)
+  textBufferSetText helpTB helpText
 
   refreshMainWin s
 
@@ -168,12 +204,6 @@ connectGUI s = do
       case m_a of
         Just a | a /= olda -> setSetting s settingName a >> refreshMainWin s
         _ -> return ()
-
-  
-showConfigWin s = do
-  let gui = stateGUI s
-  widgetShow (guiConfigD gui)
-  return ()
 
 refreshMainWin s = do
   let gui = stateGUI s
@@ -276,3 +306,5 @@ stathscales =
   , ("frosthscale", "FROST_RES")
   , ("shadowhscale", "SHADOW_RES")
   , ("arcanehscale", "ARCANE_RES") ]
+
+helpText = "ConsiderGUI v1.0\n\nHelp\n"
