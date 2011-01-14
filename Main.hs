@@ -5,7 +5,10 @@ import Graphics.UI.Gtk.Glade
 import Data.IORef
 import Control.Exception
 import Control.Monad
+import Control.Concurrent
 import System.Directory
+import System.Process
+import System.IO
 import Data.Maybe
 import qualified Data.ByteString.Char8 as C8
 
@@ -19,7 +22,8 @@ dbFile d a = accountFolder d ++ "/" ++ a ++ "/SavedVariables/Considerater.lua"
 data GUI = GUI { guiW1 :: Window
                , guiConfigD
                , guiHelpD
-               , guiStatD :: Dialog
+               , guiStatD
+               , guiSimcD :: Dialog
                , guiQuitTB
                , guiHelpTB
                , guiConfigTB :: ToolButton
@@ -28,12 +32,15 @@ data GUI = GUI { guiW1 :: Window
                , guiProfCB :: ComboBox
                , guiEditProfB
                , guiHelpCloseB
+               , guiSimcB
+               , guiSimExecB
                , guiCfgOkB
                , guiCfgCancelB
                , guiStatOkB
                , guiStatCancelB :: Button
                , guiStatScales :: [(String, HScale)]
-               , guiHelpTV :: TextView
+               , guiHelpTV
+               , guiSimcOutTV :: TextView
                , guiWoWFolderFC
                , guiSimCProgFC :: FileChooser
                }
@@ -111,29 +118,31 @@ loadGlade = do
   builderAddFromFile builder gladeFile
   let find cast = builderGetObject builder cast
   [w1] <- mapM (find castToWindow) ["window1"]
-  [configD, statD, helpD] <- mapM (find castToDialog)
-    ["configdialog", "statdialog", "helpdialog"]
+  [configD, statD, helpD, simcD] <- mapM (find castToDialog)
+    ["configdialog", "statdialog", "helpdialog", "simcdialog"]
   [quitTB,configTB, helpTB] <- mapM (find castToToolButton)
     ["quittoolbutton", "configtoolbutton", "helptoolbutton"]
   [accountCB, toonCB, profCB] <- mapM (find castToComboBox)
     ["accountcombobox", "tooncombobox", "profcombobox"]
-  [ editProfB, helpCloseB, statOkB, statCancelB, cfgOkB, cfgCancelB ]
+  [ editProfB, helpCloseB, statOkB, statCancelB, 
+    cfgOkB, cfgCancelB, simcB, simExecB ]
     <- mapM (find castToButton)
     [ "editprofbutton", "helpclosebutton", "statok", "statcancel"
-    , "configok", "configcancel" ]
+    , "configok", "configcancel", "simcbutton", "simexecbutton" ]
   hscales <- forM stathscales $ \ (scaleName, statName) -> do
     s <- find castToHScale scaleName
     rangeSetRange s 0 25
     rangeSetIncrements s 0.1 1.0
     return (statName, s)
-  [helpTV] <- mapM (find castToTextView)
-    ["helptextview"]
+  [simcOutTV, helpTV] <- mapM (find castToTextView)
+    ["simoutputtextview", "helptextview"]
   [folderFC, simcFC] <- mapM (find castToFileChooser)
     ["wowfolderfilechooser", "simcfilechooser"]
   return $ GUI { guiW1          = w1
                , guiConfigD     = configD
                , guiHelpD       = helpD
                , guiStatD       = statD
+               , guiSimcD       = simcD
                , guiQuitTB      = quitTB
                , guiConfigTB    = configTB
                , guiHelpTB      = helpTB
@@ -142,12 +151,15 @@ loadGlade = do
                , guiProfCB      = profCB
                , guiEditProfB   = editProfB
                , guiHelpCloseB  = helpCloseB
+               , guiSimcB       = simcB
+               , guiSimExecB    = simExecB
                , guiStatOkB     = statOkB
                , guiStatCancelB = statCancelB
                , guiCfgOkB      = cfgOkB
                , guiCfgCancelB  = cfgCancelB
                , guiStatScales  = hscales
                , guiHelpTV      = helpTV
+               , guiSimcOutTV   = simcOutTV
                , guiWoWFolderFC = folderFC
                , guiSimCProgFC  = simcFC
                }
@@ -188,6 +200,8 @@ connectGUI s = do
   guiEditProfB gui `onClicked` showStatDialog s
   guiStatCancelB gui `onClicked` widgetHide (guiStatD gui)
   guiStatOkB gui `onClicked` saveStats s >> widgetHide (guiStatD gui)
+  guiSimcB gui `onClicked` widgetShow (guiSimcD gui)
+  guiSimExecB gui `onClicked` runSimC s
 
   -- help
   guiHelpTB gui `onToolButtonClicked` widgetShow (guiHelpD gui)
@@ -269,6 +283,15 @@ saveStats s = do
       db s $~ \ (Just e) -> Just $ modifyExpr e [Str "profiles", Str profKey, Str "profiles", Str prof] (Arr newTable)
       saveDB s
       return ()
+
+runSimC s = do
+  let gui = stateGUI s
+  tb <- textViewGetBuffer (guiSimcOutTV gui)
+  -- (_, Just hout, _, pid) <- createProcess (proc "/home/md/src/simc/cataclysm/engine/simc" ["armory=us,shadowsong,worgcraft","iterations=100","calculate_scale_factors=1"]){ std_out = CreatePipe }
+  -- forkIO $ do
+    -- s <- hGetContents hout
+  forM_ "abcdefhijklmnopqrstuvwxyz\n" $ \ c -> textBufferInsertAtCursor tb [c]
+  return ()
 
 comboBoxTextClear cb = cellLayoutClear cb >> comboBoxSetModelText cb
 
