@@ -10,6 +10,7 @@ import Control.Monad (MonadPlus(..), ap)
 import Text.ParserCombinators.Parsec hiding (many, optional, (<|>))
 import qualified Text.ParserCombinators.Parsec.Token as T
 import qualified Text.ParserCombinators.Parsec.Language as L
+import qualified Data.ByteString.Char8 as C8
 
 data LuaStmt = Assign String LuaExpr
   deriving (Eq, Ord)
@@ -89,7 +90,7 @@ lua :: GenParser Char () LuaStmt
 lua = whiteSpace >> stmt <* eof
 
 parseLuaFile :: SourceName -> IO (Either ParseError LuaStmt)
-parseLuaFile = parseFromFile lua
+parseLuaFile file = (parseLua file . C8.unpack) `fmap` C8.readFile file
 
 parseLua :: SourceName -> String -> Either ParseError LuaStmt
 parseLua = parse lua

@@ -87,7 +87,7 @@ saveDB s = handle failureCase $ do
   case m_e of
     Nothing -> return False
     Just e  -> do
-      writeFile (dbFile wow acnt) (show (Assign "ConsideraterDB" e))
+      C8.writeFile (dbFile wow acnt) (C8.pack $ show (Assign "ConsideraterDB" e))
       return True
   where failureCase :: SomeException -> IO Bool
         failureCase _ = db s $= Nothing >> return False
