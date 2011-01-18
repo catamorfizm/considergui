@@ -1,7 +1,6 @@
 import LuaParser
 import Data.List
 import Graphics.UI.Gtk hiding (get)
-import Graphics.UI.Gtk.Glade
 import Data.IORef
 import Control.Exception
 import Control.Monad
@@ -14,8 +13,9 @@ import qualified Data.ByteString.Char8 as C8
 
 settingsFile = ".considerguirc"
 gladeFile = "gui.glade"
+maxWeight = 25
 
-defaultSettings = [("folder", "wow"), ("account", "a1")]
+defaultSettings = [("folder", "wow"), ("account", "a1"), ("region", "us")]
 accountFolder d = d++"/WTF/Account"
 dbFile d a = accountFolder d ++ "/" ++ a ++ "/SavedVariables/Considerater.lua"
 
@@ -131,7 +131,7 @@ loadGlade = do
     , "configok", "configcancel", "simcbutton", "simexecbutton" ]
   hscales <- forM stathscales $ \ (scaleName, statName) -> do
     s <- find castToHScale scaleName
-    rangeSetRange s 0 25
+    rangeSetRange s 0 maxWeight
     rangeSetIncrements s 0.1 1.0
     return (statName, s)
   [simcOutTV, helpTV] <- mapM (find castToTextView)
@@ -284,13 +284,57 @@ saveStats s = do
       saveDB s
       return ()
 
+normScaleFactors sf = map (\ (n, w) -> (n, w*factor)) sf
+  where factor = maxWeight / maximum (map snd sf)
+
+setScaleFactors s sf =
+  forM_ sf $ \ (n, w) -> do
+    case lookup n simchscales of
+      Nothing     -> return ()
+      Just hsName -> do
+        let Just hs = lookup hsName (guiStatScales (stateGUI s))
+        rangeSetValue hs w
+
+parseScaleFactors s tb = do
+  end <- textBufferGetEndIter tb
+  res <- textIterBackwardSearch end "Scale Factors:" [] Nothing
+  case res of
+    Nothing -> putStrLn "scale factors not found"
+    Just (_, e) -> do
+      str <- textBufferGetText tb e end False
+      setScaleFactors s . normScaleFactors .
+        flip map (drop 1 (words str)) $ \ wstr ->
+          let (n,w) = break (=='=') wstr in (n,read (drop 1 w) :: Double)
+
+toonNameServer t = (head $ words t, last $ words t)
+
 runSimC s = do
   let gui = stateGUI s
   tb <- textViewGetBuffer (guiSimcOutTV gui)
-  -- (_, Just hout, _, pid) <- createProcess (proc "/home/md/src/simc/cataclysm/engine/simc" ["armory=us,shadowsong,worgcraft","iterations=100","calculate_scale_factors=1"]){ std_out = CreatePipe }
-  -- forkIO $ do
-    -- s <- hGetContents hout
-  forM_ "abcdefhijklmnopqrstuvwxyz\n" $ \ c -> textBufferInsertAtCursor tb [c]
+  cursor <- textBufferGetInsert tb
+  let scrollToEnd = textViewScrollToMark (guiSimcOutTV gui) cursor 0 (Just (1, 0))
+  region <- getSetting s "region"
+  toon <- getSetting s "toon"
+  let (char, serv) = toonNameServer toon
+  let armory = "armory="++region++","++serv++","++char
+  simc <- getSetting s "simc"
+  (_, Just hout, _, pid) <- createProcess (proc simc [armory,"iterations=100","calculate_scale_factors=1"]){ std_out = CreatePipe }
+  let progress = do
+        code <- getProcessExitCode pid
+        case code of
+          Just _  -> do
+            rest <- C8.unpack `fmap` C8.hGetContents hout
+            textBufferInsertAtCursor tb rest
+            scrollToEnd
+            parseScaleFactors s tb
+            return False
+          Nothing -> do
+            s <- C8.unpack `fmap` C8.hGetNonBlocking hout 64
+            unless (null s) $ do
+              textBufferInsertAtCursor tb s
+              scrollToEnd
+            return True
+  timeoutAdd progress 100
   return ()
 
 comboBoxTextClear cb = cellLayoutClear cb >> comboBoxSetModelText cb
@@ -329,5 +373,22 @@ stathscales =
   , ("frosthscale", "FROST_RES")
   , ("shadowhscale", "SHADOW_RES")
   , ("arcanehscale", "ARCANE_RES") ]
+
+simchscales =
+  [ ("Str"      , "STR")                 
+  , ("Agi"      , "AGI")                 
+  , ("Sta"      , "STA")                 
+  , ("Int"      , "INT")                 
+  , ("Spi"      , "SPI")                 
+  , ("Mastery"  , "MASTERY_RATING")      
+  , ("Wdps"     , "DPS")                 
+  , ("SP"       , "SPELL_DMG")           
+  , ("Hit"      , "MELEE_HIT_RATING")    
+  , ("Crit"     , "MELEE_CRIT_RATING")   
+  , ("Haste"    , "MELEE_HASTE_RATING")  
+  , ("Exp"      , "EXPERTISE_RATING")    
+  , ("Armor"    , "ARMOR")               
+  , ("Dodge"    , "DODGE_RATING")        
+  , ("Parry"    , "PARRY_RATING") ]
 
 helpText = "ConsiderGUI v1.0\n\nHelp\n"
