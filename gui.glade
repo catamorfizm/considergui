@@ -206,11 +206,6 @@
       </object>
     </child>
   </object>
-  <object class="GtkWindow" id="configwin">
-    <child>
-      <placeholder/>
-    </child>
-  </object>
   <object class="GtkAccelGroup" id="accelgroup1"/>
   <object class="GtkDialog" id="configdialog">
     <property name="border_width">5</property>
@@ -224,7 +219,7 @@
         <child>
           <object class="GtkTable" id="table5">
             <property name="visible">True</property>
-            <property name="n_rows">2</property>
+            <property name="n_rows">3</property>
             <property name="n_columns">2</property>
             <child>
               <object class="GtkLabel" id="label1">
@@ -247,7 +242,7 @@
             <child>
               <object class="GtkLabel" id="label34">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">label</property>
+                <property name="label" translatable="yes">Location of simc Program</property>
               </object>
               <packing>
                 <property name="top_attach">1</property>
@@ -263,6 +258,27 @@
                 <property name="right_attach">2</property>
                 <property name="top_attach">1</property>
                 <property name="bottom_attach">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="label31">
+                <property name="visible">True</property>
+                <property name="label" translatable="yes">Region</property>
+              </object>
+              <packing>
+                <property name="top_attach">2</property>
+                <property name="bottom_attach">3</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkComboBox" id="regioncombobox">
+                <property name="visible">True</property>
+              </object>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
+                <property name="top_attach">2</property>
+                <property name="bottom_attach">3</property>
               </packing>
             </child>
           </object>
