@@ -1006,6 +1006,8 @@
     </action-widgets>
   </object>
   <object class="GtkDialog" id="simcdialog">
+    <property name="width_request">640</property>
+    <property name="height_request">480</property>
     <property name="border_width">5</property>
     <property name="type_hint">normal</property>
     <property name="has_separator">False</property>
@@ -1021,7 +1023,7 @@
             <child>
               <object class="GtkLabel" id="label32">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">label</property>
+                <property name="label" translatable="yes">Options</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -1030,10 +1032,18 @@
               </packing>
             </child>
             <child>
-              <object class="GtkTextView" id="simoptionstextview">
+              <object class="GtkScrolledWindow" id="scrolledwindow2">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <property name="accepts_tab">False</property>
+                <property name="hscrollbar_policy">automatic</property>
+                <property name="vscrollbar_policy">automatic</property>
+                <child>
+                  <object class="GtkTextView" id="simoptionstextview">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="accepts_tab">False</property>
+                  </object>
+                </child>
               </object>
               <packing>
                 <property name="position">1</property>
@@ -1056,6 +1066,21 @@
                     <property name="position">0</property>
                   </packing>
                 </child>
+                <child>
+                  <object class="GtkButton" id="simstopbutton">
+                    <property name="label">gtk-stop</property>
+                    <property name="visible">True</property>
+                    <property name="sensitive">False</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="use_stock">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">False</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
               </object>
               <packing>
                 <property name="position">2</property>
@@ -1064,7 +1089,7 @@
             <child>
               <object class="GtkLabel" id="label33">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">label</property>
+                <property name="label" translatable="yes">Output</property>
               </object>
               <packing>
                 <property name="expand">False</property>
