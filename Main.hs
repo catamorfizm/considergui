@@ -14,6 +14,7 @@ import qualified Data.ByteString.Char8 as C8
 settingsFile = ".considerguirc"
 gladeFile = "gui.glade"
 maxWeight = 25
+regionCodes = ["us","eu","tw","cn"]
 
 defaultSettings = [("folder", "wow"), ("account", "a1"), ("region", "us")]
 accountFolder d = d++"/WTF/Account"
@@ -29,7 +30,8 @@ data GUI = GUI { guiW1 :: Window
                , guiConfigTB :: ToolButton
                , guiAccountCB
                , guiToonCB
-               , guiProfCB :: ComboBox
+               , guiProfCB
+               , guiRegionCB :: ComboBox
                , guiEditProfB
                , guiHelpCloseB
                , guiSimcB
@@ -122,8 +124,8 @@ loadGlade = do
     ["configdialog", "statdialog", "helpdialog", "simcdialog"]
   [quitTB,configTB, helpTB] <- mapM (find castToToolButton)
     ["quittoolbutton", "configtoolbutton", "helptoolbutton"]
-  [accountCB, toonCB, profCB] <- mapM (find castToComboBox)
-    ["accountcombobox", "tooncombobox", "profcombobox"]
+  [accountCB, toonCB, profCB, regionCB] <- mapM (find castToComboBox)
+    ["accountcombobox", "tooncombobox", "profcombobox", "regioncombobox"]
   [ editProfB, helpCloseB, statOkB, statCancelB, 
     cfgOkB, cfgCancelB, simcB, simExecB ]
     <- mapM (find castToButton)
@@ -149,6 +151,7 @@ loadGlade = do
                , guiAccountCB   = accountCB
                , guiToonCB      = toonCB
                , guiProfCB      = profCB
+               , guiRegionCB    = regionCB
                , guiEditProfB   = editProfB
                , guiHelpCloseB  = helpCloseB
                , guiSimcB       = simcB
@@ -190,6 +193,13 @@ connectGUI s = do
     when (isJust m_folder) $ setSetting s "folder" (fromJust m_folder)
     when (isJust m_simc) $ setSetting s "simc" (fromJust m_simc)
     widgetHide (guiConfigD gui)
+  comboBoxTextClear (guiRegionCB gui)
+  mapM_ (comboBoxAppendText (guiRegionCB gui)) regionCodes
+  region <- getSetting s "region"
+  case findIndex (==region) regionCodes of
+    Just i  -> comboBoxSetActive (guiRegionCB gui) i
+    Nothing -> return ()
+  guiRegionCB gui `on` changed $ comboBoxChangeFun "region" (guiRegionCB gui)
 
   -- comboboxes  
   guiAccountCB gui `on` changed $ comboBoxChangeFun "account" (guiAccountCB gui)
