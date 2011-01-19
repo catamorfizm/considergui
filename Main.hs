@@ -36,6 +36,7 @@ data GUI = GUI { guiW1 :: Window
                , guiHelpCloseB
                , guiSimcB
                , guiSimExecB
+               , guiSimStopB
                , guiCfgOkB
                , guiCfgCancelB
                , guiStatOkB
@@ -127,10 +128,11 @@ loadGlade = do
   [accountCB, toonCB, profCB, regionCB] <- mapM (find castToComboBox)
     ["accountcombobox", "tooncombobox", "profcombobox", "regioncombobox"]
   [ editProfB, helpCloseB, statOkB, statCancelB, 
-    cfgOkB, cfgCancelB, simcB, simExecB ]
+    cfgOkB, cfgCancelB, simcB, simExecB, simStopB ]
     <- mapM (find castToButton)
     [ "editprofbutton", "helpclosebutton", "statok", "statcancel"
-    , "configok", "configcancel", "simcbutton", "simexecbutton" ]
+    , "configok", "configcancel", "simcbutton", "simexecbutton"
+    , "simstopbutton" ]
   hscales <- forM stathscales $ \ (scaleName, statName) -> do
     s <- find castToHScale scaleName
     rangeSetRange s 0 maxWeight
@@ -156,6 +158,7 @@ loadGlade = do
                , guiHelpCloseB  = helpCloseB
                , guiSimcB       = simcB
                , guiSimExecB    = simExecB
+               , guiSimStopB    = simStopB
                , guiStatOkB     = statOkB
                , guiStatCancelB = statCancelB
                , guiCfgOkB      = cfgOkB
@@ -329,7 +332,13 @@ runSimC s = do
   let armory = "armory="++region++","++serv++","++char
   simc <- getSetting s "simc"
   (_, Just hout, _, pid) <- createProcess (proc simc [armory,"iterations=100","calculate_scale_factors=1"]){ std_out = CreatePipe }
-  let progress = do
+  widgetSetSensitive (guiSimStopB gui) True
+  widgetSetSensitive (guiSimExecB gui) False
+  guiSimStopB gui `onClicked` do
+    widgetSetSensitive (guiSimStopB gui) False
+    widgetSetSensitive (guiSimExecB gui) True
+    terminateProcess pid
+  let progress = handle ((\ _ -> return False) :: SomeException -> IO Bool) $ do
         code <- getProcessExitCode pid
         case code of
           Just _  -> do
@@ -337,6 +346,8 @@ runSimC s = do
             textBufferInsertAtCursor tb rest
             scrollToEnd
             parseScaleFactors s tb
+            widgetSetSensitive (guiSimStopB gui) False
+            widgetSetSensitive (guiSimExecB gui) True
             return False
           Nothing -> do
             s <- C8.unpack `fmap` C8.hGetNonBlocking hout 64
