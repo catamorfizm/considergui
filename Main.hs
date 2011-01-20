@@ -250,10 +250,13 @@ connectGUI s = do
   guiEditProfB gui `onClicked` do
     prof <- getSetting s "prof"
     unless (null prof) $ showStatDialog s
+    widgetSetSensitive (guiW1 gui) False
   guiStatCancelB gui `onClicked` widgetHide (guiStatD gui)
   guiStatOkB gui `onClicked` do
     saveStats s
     widgetHide (guiStatD gui)
+  guiStatD gui `onHide` do
+    widgetSetSensitive (guiW1 gui) True
   -- del profile button
   guiDelProfB gui `onClicked` do
     prof <- getSetting s "prof"
