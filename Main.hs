@@ -229,6 +229,7 @@ connectGUI s = do
     when (isJust m_folder) $ setSetting s "folder" (fromJust m_folder)
     when (isJust m_simc) $ setSetting s "simc" (fromJust m_simc)
     widgetHide (guiConfigD gui)
+  guiConfigD gui `windowSetTransientFor` guiW1 gui
   comboBoxTextClear (guiRegionCB gui)
   mapM_ (comboBoxAppendText (guiRegionCB gui)) regionCodes
   region <- getSetting s "region"
@@ -257,6 +258,7 @@ connectGUI s = do
         copyStats s copy
         refreshMainWin s
     widgetHide (guiNewProfD gui)
+  guiNewProfD gui `windowSetTransientFor` guiW1 gui
   -- edit profile buttons
   guiEditProfB gui `onClicked` do
     prof <- getSetting s "prof"
@@ -268,11 +270,14 @@ connectGUI s = do
     widgetHide (guiStatD gui)
   guiStatD gui `onHide` do
     widgetSetSensitive (guiW1 gui) True
+  guiStatD gui `windowSetTransientFor` guiW1 gui
   -- del profile button
   guiDelProfB gui `onClicked` do
     prof <- getSetting s "prof"
     unless (null prof) $ do
-      delD <- messageDialogNew Nothing [] MessageQuestion ButtonsYesNo ("Delete "++prof++"?")
+      delD <- messageDialogNew (Just (guiW1 gui)) []
+                               MessageQuestion ButtonsYesNo
+                               ("Delete "++prof++"?")
       resp <- dialogRun delD
       when (resp==ResponseYes) $ do
         delStats s
@@ -293,12 +298,14 @@ connectGUI s = do
       Nothing -> return ()
       Just sf -> setScaleFactors s sf
     widgetHide (guiSimcD gui)
+  guiSimcD gui `windowSetTransientFor` guiStatD gui
 
   -- help
   guiHelpTB gui `onToolButtonClicked` widgetShow (guiHelpD gui)
   guiHelpCloseB gui `onClicked` widgetHide (guiHelpD gui)
   helpTB <- textViewGetBuffer (guiHelpTV gui)
   textBufferSetText helpTB helpText
+  guiHelpD gui `windowSetTransientFor` guiW1 gui
 
   refreshMainWin s
 
