@@ -19,6 +19,7 @@ regionCodes = ["us","eu","tw","cn"]
 progressUpdateInterval = 100 -- msec
 
 defaultSettings = [ ("region", "us")
+                  , ("simspec", "primary")
                   , ("simcOptions", unlines ["iterations=10000\nthreads=1\nskill=0.8"]) ]
 accountFolder d = d++"/WTF/Account"
 dbFile d a = accountFolder d ++ "/" ++ a ++ "/SavedVariables/Considerater.lua"
@@ -36,7 +37,8 @@ data GUI = GUI { guiW1 :: Window
                , guiToonCB
                , guiProfCB
                , guiRegionCB
-               , guiCopyFromCB :: ComboBox
+               , guiCopyFromCB
+               , guiSimSpecCB :: ComboBox
                , guiEditProfB
                , guiHelpCloseB
                , guiSimcB
@@ -151,9 +153,10 @@ loadGlade = do
     ["configdialog", "statdialog", "helpdialog", "simcdialog", "newprofdialog"]
   [quitTB,configTB, helpTB] <- mapM (find castToToolButton)
     ["quittoolbutton", "configtoolbutton", "helptoolbutton"]
-  [accountCB, toonCB, profCB, regionCB, copyFromCB] <- mapM (find castToComboBox)
+  [accountCB, toonCB, profCB, regionCB,
+   copyFromCB, simSpecCB] <- mapM (find castToComboBox)
     [ "accountcombobox", "tooncombobox", "profcombobox"
-    , "regioncombobox", "copyfromcombobox" ]
+    , "regioncombobox", "copyfromcombobox", "simspeccombobox" ]
   [ editProfB, helpCloseB, statOkB, statCancelB, 
     cfgOkB, cfgCancelB, simcB, simExecB, simStopB,
     simCancelB, simApplyB, newProfB, delProfB ]
@@ -189,6 +192,7 @@ loadGlade = do
                , guiProfCB      = profCB
                , guiRegionCB    = regionCB
                , guiCopyFromCB  = copyFromCB
+               , guiSimSpecCB   = simSpecCB
                , guiEditProfB   = editProfB
                , guiNewProfB    = newProfB
                , guiDelProfB    = delProfB
@@ -294,7 +298,7 @@ connectGUI s = do
   guiSimcB gui `onClicked` do
     simcOptions <- getSetting s "simcOptions"
     optTB <- textViewGetBuffer (guiSimcOptTV gui)
-    textBufferSetText optTB simcOptions
+    textBufferSetText optTB simcOptions    
     widgetShow (guiSimcD gui)
   guiSimExecB gui `onClicked` runSimC s
   guiSimCancelB gui `onClicked` widgetHide (guiSimcD gui)
@@ -305,6 +309,10 @@ connectGUI s = do
       Nothing -> return ()
       Just sf -> setScaleFactors s sf
     widgetHide (guiSimcD gui)
+  comboBoxTextClear $ guiSimSpecCB gui
+  mapM_ (comboBoxAppendText (guiSimSpecCB gui)) ["primary", "secondary"]
+  spec <- getSetting s "simspec"
+  comboBoxSetActive (guiSimSpecCB gui) (if spec == "primary" then 0 else 1)
   guiSimcD gui `windowSetTransientFor` guiStatD gui
 
   -- help
@@ -483,14 +491,16 @@ runSimC s = do
   let scrollToEnd = textViewScrollToMark (guiSimcOutTV gui) cursor 0 (Just (1, 0))
   region  <- getSetting s "region"
   toon    <- getSetting s "toon"
+  spec    <- maybe "primary" id `fmap` comboBoxGetActiveText (guiSimSpecCB gui)
   let (char, serv) = toonNameServer toon
-  let armory = "armory="++region++","++serv++","++char
+  let armory = "armory="++region++","++serv++","++char++"|"++spec
   simc    <- getSetting s "simc"
   optTB   <- textViewGetBuffer (guiSimcOptTV gui)
   optBeg  <- textBufferGetStartIter optTB
   optEnd  <- textBufferGetEndIter optTB
   options <- textBufferGetText optTB optBeg optEnd False
   setSetting s "simcOptions" options
+  setSetting s "simspec" spec
   widgetSetSensitive (guiSimApplyB gui) False
   statusbarPop (guiSimSB gui) cid
   statusbarPush (guiSimSB gui) cid "Running"
