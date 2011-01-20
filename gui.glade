@@ -3,6 +3,7 @@
   <requires lib="gtk+" version="2.16"/>
   <!-- interface-naming-policy project-wide -->
   <object class="GtkWindow" id="window1">
+    <property name="title" translatable="yes">ConsiderGUI</property>
     <accel-groups>
       <group name="accelgroup1"/>
     </accel-groups>
@@ -147,19 +148,6 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkButton" id="renameprofbutton">
-                            <property name="label" translatable="yes">Rename</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="receives_default">True</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">False</property>
-                            <property name="position">1</property>
-                          </packing>
-                        </child>
-                        <child>
                           <object class="GtkButton" id="newprofbutton">
                             <property name="label">gtk-new</property>
                             <property name="visible">True</property>
@@ -170,7 +158,7 @@
                           <packing>
                             <property name="expand">False</property>
                             <property name="fill">False</property>
-                            <property name="position">2</property>
+                            <property name="position">1</property>
                           </packing>
                         </child>
                         <child>
@@ -184,7 +172,7 @@
                           <packing>
                             <property name="expand">False</property>
                             <property name="fill">False</property>
-                            <property name="position">3</property>
+                            <property name="position">2</property>
                           </packing>
                         </child>
                       </object>
@@ -215,6 +203,8 @@
   <object class="GtkAccelGroup" id="accelgroup1"/>
   <object class="GtkDialog" id="configdialog">
     <property name="border_width">5</property>
+    <property name="type">popup</property>
+    <property name="title" translatable="yes">Configuration</property>
     <property name="type_hint">normal</property>
     <property name="has_separator">False</property>
     <child internal-child="vbox">
@@ -236,9 +226,9 @@
             <child>
               <object class="GtkFileChooserButton" id="wowfolderfilechooser">
                 <property name="visible">True</property>
+                <property name="create_folders">False</property>
                 <property name="action">select-folder</property>
                 <property name="show_hidden">True</property>
-                <property name="create_folders">False</property>
               </object>
               <packing>
                 <property name="left_attach">1</property>
@@ -334,14 +324,16 @@
       </object>
     </child>
     <action-widgets>
-      <action-widget response="0">configcancel</action-widget>
-      <action-widget response="0">configok</action-widget>
+      <action-widget response="-6">configcancel</action-widget>
+      <action-widget response="-5">configok</action-widget>
     </action-widgets>
   </object>
   <object class="GtkDialog" id="statdialog">
     <property name="width_request">480</property>
     <property name="height_request">640</property>
     <property name="border_width">5</property>
+    <property name="type">popup</property>
+    <property name="title" translatable="yes">Profile</property>
     <property name="type_hint">normal</property>
     <property name="has_separator">False</property>
     <child internal-child="vbox">
@@ -1043,6 +1035,8 @@
     <property name="width_request">640</property>
     <property name="height_request">480</property>
     <property name="border_width">5</property>
+    <property name="type">popup</property>
+    <property name="title" translatable="yes">Simulate</property>
     <property name="type_hint">normal</property>
     <property name="has_separator">False</property>
     <child internal-child="vbox">
@@ -1214,6 +1208,8 @@
   </object>
   <object class="GtkDialog" id="helpdialog">
     <property name="border_width">5</property>
+    <property name="type">popup</property>
+    <property name="title" translatable="yes">Help</property>
     <property name="type_hint">normal</property>
     <property name="has_separator">False</property>
     <child internal-child="vbox">
@@ -1260,6 +1256,114 @@
     </child>
     <action-widgets>
       <action-widget response="0">helpclosebutton</action-widget>
+    </action-widgets>
+  </object>
+  <object class="GtkDialog" id="newprofdialog">
+    <property name="border_width">5</property>
+    <property name="type">popup</property>
+    <property name="title" translatable="yes">Create New Profile</property>
+    <property name="modal">True</property>
+    <property name="type_hint">normal</property>
+    <property name="has_separator">False</property>
+    <child internal-child="vbox">
+      <object class="GtkVBox" id="dialog-vbox5">
+        <property name="visible">True</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">2</property>
+        <child>
+          <object class="GtkTable" id="table7">
+            <property name="visible">True</property>
+            <property name="n_rows">2</property>
+            <property name="n_columns">2</property>
+            <child>
+              <object class="GtkLabel" id="label38">
+                <property name="visible">True</property>
+                <property name="xalign">0.94999998807907104</property>
+                <property name="label" translatable="yes">Copy From</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="label39">
+                <property name="visible">True</property>
+                <property name="xalign">0.94999998807907104</property>
+                <property name="label" translatable="yes">New Name</property>
+              </object>
+              <packing>
+                <property name="top_attach">1</property>
+                <property name="bottom_attach">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkEntry" id="newprofentry">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="invisible_char">&#x2022;</property>
+              </object>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
+                <property name="top_attach">1</property>
+                <property name="bottom_attach">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkComboBox" id="copyfromcombobox">
+                <property name="visible">True</property>
+              </object>
+              <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child internal-child="action_area">
+          <object class="GtkHButtonBox" id="dialog-action_area5">
+            <property name="visible">True</property>
+            <property name="layout_style">end</property>
+            <child>
+              <object class="GtkButton" id="button1">
+                <property name="label">gtk-cancel</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_stock">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">False</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="button2">
+                <property name="label">gtk-new</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_stock">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">False</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="pack_type">end</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <action-widgets>
+      <action-widget response="-6">button1</action-widget>
+      <action-widget response="-5">button2</action-widget>
     </action-widgets>
   </object>
 </interface>

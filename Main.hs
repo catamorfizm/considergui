@@ -28,14 +28,16 @@ data GUI = GUI { guiW1 :: Window
                , guiConfigD
                , guiHelpD
                , guiStatD
-               , guiSimcD :: Dialog
+               , guiSimcD
+               , guiNewProfD :: Dialog
                , guiQuitTB
                , guiHelpTB
                , guiConfigTB :: ToolButton
                , guiAccountCB
                , guiToonCB
                , guiProfCB
-               , guiRegionCB :: ComboBox
+               , guiRegionCB
+               , guiCopyFromCB :: ComboBox
                , guiEditProfB
                , guiHelpCloseB
                , guiSimcB
@@ -46,7 +48,9 @@ data GUI = GUI { guiW1 :: Window
                , guiStatOkB
                , guiStatCancelB
                , guiSimCancelB
-               , guiSimApplyB :: Button
+               , guiSimApplyB
+               , guiNewProfB
+               , guiDelProfB :: Button
                , guiSimSB :: Statusbar
                , guiStatScales :: [(String, HScale)]
                , guiHelpTV
@@ -54,6 +58,7 @@ data GUI = GUI { guiW1 :: Window
                , guiSimcOptTV :: TextView
                , guiWoWFolderFC
                , guiSimCProgFC :: FileChooser
+               , guiNewProfE :: Entry
                }
 
 type Settings = IORef [(String, String)]
@@ -99,7 +104,7 @@ loadDB s = handle failureCase $ do
   e_lua <- parseLuaFile (dbFile wow acnt)
   case e_lua of
     Left err  -> print err >> failureCase undefined
-    Right (Assign _ lua) -> analyze lua >> db s $= Just lua >> return True
+    Right (Assign _ lua) -> db s $= Just lua >> return True
   where failureCase :: SomeException -> IO Bool
         failureCase _ = db s $= Nothing >> return False
 
@@ -115,33 +120,27 @@ saveDB s = handle failureCase $ do
   where failureCase :: SomeException -> IO Bool
         failureCase _ = db s $= Nothing >> return False
 
-
-analyze (Arr a) = do
-  case lookup (Str "profileKeys") a of
-    Just (Arr pkeys) -> print (map fst pkeys)
-    _ -> putStrLn "Mal-formed profileKeys"
-  return ()
-analyze _ = putStrLn "Mal-formed saved variables"
-
 loadGlade :: IO GUI
 loadGlade = do
   builder <- builderNew         -- GTKBuilder format
   builderAddFromFile builder gladeFile
   let find cast = builderGetObject builder cast
   [w1] <- mapM (find castToWindow) ["window1"]
-  [configD, statD, helpD, simcD] <- mapM (find castToDialog)
-    ["configdialog", "statdialog", "helpdialog", "simcdialog"]
+  [configD, statD, helpD, simcD, newProfD] <- mapM (find castToDialog)
+    ["configdialog", "statdialog", "helpdialog", "simcdialog", "newprofdialog"]
   [quitTB,configTB, helpTB] <- mapM (find castToToolButton)
     ["quittoolbutton", "configtoolbutton", "helptoolbutton"]
-  [accountCB, toonCB, profCB, regionCB] <- mapM (find castToComboBox)
-    ["accountcombobox", "tooncombobox", "profcombobox", "regioncombobox"]
+  [accountCB, toonCB, profCB, regionCB, copyFromCB] <- mapM (find castToComboBox)
+    [ "accountcombobox", "tooncombobox", "profcombobox"
+    , "regioncombobox", "copyfromcombobox" ]
   [ editProfB, helpCloseB, statOkB, statCancelB, 
     cfgOkB, cfgCancelB, simcB, simExecB, simStopB,
-    simCancelB, simApplyB ]
+    simCancelB, simApplyB, newProfB, delProfB ]
     <- mapM (find castToButton)
     [ "editprofbutton", "helpclosebutton", "statok", "statcancel"
     , "configok", "configcancel", "simcbutton", "simexecbutton"
-    , "simstopbutton", "simcancelbutton", "simapplybutton" ]
+    , "simstopbutton", "simcancelbutton", "simapplybutton"
+    , "newprofbutton", "delprofbutton" ]
   hscales <- forM stathscales $ \ (scaleName, statName) -> do
     s <- find castToHScale scaleName
     rangeSetRange s 0 maxWeight
@@ -153,11 +152,14 @@ loadGlade = do
     ["wowfolderfilechooser", "simcfilechooser"]
   [simSB] <- mapM (find castToStatusbar)
     ["simstatusbar"]
+  [newProfE] <- mapM (find castToEntry)
+    ["newprofentry"]
   return $ GUI { guiW1          = w1
                , guiConfigD     = configD
                , guiHelpD       = helpD
                , guiStatD       = statD
                , guiSimcD       = simcD
+               , guiNewProfD    = newProfD
                , guiQuitTB      = quitTB
                , guiConfigTB    = configTB
                , guiHelpTB      = helpTB
@@ -165,7 +167,10 @@ loadGlade = do
                , guiToonCB      = toonCB
                , guiProfCB      = profCB
                , guiRegionCB    = regionCB
+               , guiCopyFromCB  = copyFromCB
                , guiEditProfB   = editProfB
+               , guiNewProfB    = newProfB
+               , guiDelProfB    = delProfB
                , guiHelpCloseB  = helpCloseB
                , guiSimcB       = simcB
                , guiSimExecB    = simExecB
@@ -183,6 +188,7 @@ loadGlade = do
                , guiWoWFolderFC = folderFC
                , guiSimCProgFC  = simcFC
                , guiSimSB       = simSB
+               , guiNewProfE    = newProfE
                }
 
 connectGUI s = do
@@ -225,6 +231,21 @@ connectGUI s = do
   guiToonCB gui `on` changed $ comboBoxChangeFun "toon" (guiToonCB gui)
   guiProfCB gui `on` changed $ comboBoxChangeFun "prof" (guiProfCB gui)
 
+  -- new profile button
+  guiNewProfB gui `onClicked` do
+    entrySetText (guiNewProfE gui) ""
+    comboBoxTextClear (guiCopyFromCB gui)
+    profList <- comboBoxGetModelText (guiProfCB gui) >>= listStoreToList
+    mapM_ (comboBoxAppendText (guiCopyFromCB gui)) profList
+    resp <- dialogRun (guiNewProfD gui)
+    when (resp == ResponseOk) $ do
+      name <- entryGetText (guiNewProfE gui)
+      when (not (null name) && name `notElem` profList) $ do
+        copy <- comboBoxGetActiveText (guiCopyFromCB gui)
+        setSetting s "prof" name
+        copyStats s copy
+        refreshMainWin s
+    widgetHide (guiNewProfD gui)
   -- edit profile buttons
   guiEditProfB gui `onClicked` showStatDialog s
   guiStatCancelB gui `onClicked` widgetHide (guiStatD gui)
@@ -299,12 +320,27 @@ refreshMainWin s = do
             Nothing -> return ()
             Just i  -> comboBoxSetActive (guiProfCB gui) i
 
+copyStats s copyFrom = do
+  let gui = stateGUI s
+  whenIO (isJust `fmap` get (db s)) $ do
+    toon <- getSetting s "toon"
+    prof <- getSetting s "prof"
+    when (not (null toon) && not (null prof)) $ do
+      d <- fromJust `fmap` get (db s)
+      let Str profKey = derefExpr d [Str "profileKeys", Str toon]
+      let srcTable = case copyFrom of
+                       Just srcName -> derefExpr d [Str "profiles", Str profKey, Str "profiles", Str srcName]
+                       Nothing      -> Arr []
+      db s $~ \ (Just e) -> Just $ modifyExpr e [Str "profiles", Str profKey, Str "profiles", Str prof] srcTable
+      saveDB s
+      return ()
+
 showStatDialog s = do
   let gui = stateGUI s
   whenIO (isJust `fmap` get (db s)) $ do
     toon <- getSetting s "toon"
     prof <- getSetting s "prof"
-    when (not (null prof) && not (null prof)) $ do
+    when (not (null toon) && not (null prof)) $ do
       Str profKey <- (flip derefExpr [Str "profileKeys", Str toon] . fromJust) `fmap` get (db s)
       profs <- (flip derefExpr [Str "profiles", Str profKey, Str "profiles"] . fromJust) `fmap` get (db s)
       let Arr ptable = profs |-> prof
@@ -319,7 +355,7 @@ saveStats s = do
   whenIO (isJust `fmap` get (db s)) $ do
     toon <- getSetting s "toon"
     prof <- getSetting s "prof"
-    when (not (null prof) && not (null prof)) $ do
+    when (not (null toon) && not (null prof)) $ do
       Str profKey <- (flip derefExpr [Str "profileKeys", Str toon] . fromJust) `fmap` get (db s)
       newTable <- forM (guiStatScales gui) $ \ (stat, scale) -> do
         x <- rangeGetValue scale
