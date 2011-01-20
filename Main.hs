@@ -74,6 +74,7 @@ main = do
   widgetShow (guiW1 (stateGUI s)) -- show main window
   wow <- getSetting s "folder"
   when (null wow) $ do
+    -- show a "first time" message if folder not set
     flip timeoutAdd 100 $ do
       m_folder <- guessFolder
       msg <- case m_folder of
@@ -91,8 +92,10 @@ main = do
   mainGUI
   return ()
 
+-- list of dir contents
 lsDir dir = filter ((/= ".") . take 1) `fmap` getDirectoryContents dir
 
+-- save/load/get/set for persistent settings
 saveSettings (S { settings = set }) = do
   v <- get set
   C8.writeFile settingsFile (C8.pack $ show v)
@@ -112,6 +115,7 @@ setSetting (s@S { settings = set }) name v = do
   set $~ (((name, v):) . filter ((/=name) . fst))
   saveSettings s
 
+-- save/load DB for the ConsideraterDB
 loadDB s = handle failureCase $ do
   wow  <- getSetting s "folder"
   acnt <- getSetting s "account"
@@ -134,6 +138,7 @@ saveDB s = handle failureCase $ do
   where failureCase :: SomeException -> IO Bool
         failureCase _ = db s $= Nothing >> return False
 
+-- read the GUI widgets and setup GUI record
 loadGlade :: IO GUI
 loadGlade = do
   builder <- builderNew         -- GTKBuilder format
@@ -205,6 +210,7 @@ loadGlade = do
                , guiNewProfE    = newProfE
                }
 
+-- configure the GUI with handlers and fill in various widgets
 connectGUI s = do
   let gui = stateGUI s
 
@@ -315,6 +321,7 @@ connectGUI s = do
         Just a | a /= olda -> setSetting s settingName a >> refreshMainWin s
         _ -> return ()
 
+-- clear and refill the widgets in the main window
 refreshMainWin s = do
   let gui = stateGUI s
   loadSettings s
@@ -359,6 +366,7 @@ refreshMainWin s = do
               widgetSetSensitive (guiEditProfB gui) True
               widgetSetSensitive (guiDelProfB gui) True
 
+-- fill and show the configuration/preferences dialog
 showConfigDialog s = do
   let gui = stateGUI s
   folder <- getSetting s "folder"
@@ -368,6 +376,7 @@ showConfigDialog s = do
   dialogRun (guiConfigD gui)
   return ()
 
+-- delete current profile
 delStats s = do
   let gui = stateGUI s
   whenIO (isJust `fmap` get (db s)) $ do
@@ -381,6 +390,7 @@ delStats s = do
       setSetting s "prof" ""
       return ()
 
+-- create new profile, optionally cloned from profile
 copyStats s copyFrom = do
   let gui = stateGUI s
   whenIO (isJust `fmap` get (db s)) $ do
@@ -396,6 +406,7 @@ copyStats s copyFrom = do
       saveDB s
       return ()
 
+-- show the edit profile dialog for current profile
 showStatDialog s = do
   let gui = stateGUI s
   whenIO (isJust `fmap` get (db s)) $ do
@@ -411,6 +422,7 @@ showStatDialog s = do
           Nothing      -> rangeSetValue scale 0
       widgetShow (guiStatD gui)
 
+-- save the changes made in the edit profile dialog
 saveStats s = do
   let gui = stateGUI s
   whenIO (isJust `fmap` get (db s)) $ do
@@ -425,9 +437,11 @@ saveStats s = do
       saveDB s
       return ()
 
+-- normalize a list of scale factors aka weights
 normScaleFactors sf = map (\ (n, w) -> (n, w*factor)) sf
   where factor = maxWeight / maximum (map snd sf)
 
+-- set the weights in the edit profile dialog
 setScaleFactors s sf =
   forM_ sf $ \ (n, w) -> do
     case lookup n simchscales of
@@ -436,6 +450,7 @@ setScaleFactors s sf =
         let Just hs = lookup hsName (guiStatScales (stateGUI s))
         rangeSetValue hs w
 
+-- parse scale factors from the simulation output
 parseScaleFactors s = do
   let gui = stateGUI s
   tb  <- textViewGetBuffer (guiSimcOutTV gui)
@@ -449,8 +464,10 @@ parseScaleFactors s = do
         flip map strs $ \ str ->
           let (n, w) = break (=='=') str in (n, read (drop 1 w))
 
+-- parse string of form "Toon - Server"
 toonNameServer t = (head $ words t, last $ words t)
 
+-- run the simulation, setup handlers for following progress
 runSimC s = do
   let gui = stateGUI s
   cid     <- statusbarGetContextId (guiSimSB gui) "runsim"
@@ -507,20 +524,22 @@ runSimC s = do
   timeoutAdd progress progressUpdateInterval
   return ()
 
+-- try to guess a valid folder
 guessFolder =
   (lookup True . flip zip possibleLocations) `fmap`
   mapM doesDirectoryExist possibleLocations
 
+-- clear a Text-only combobox (should be part of Gtk2hs IMO)
 comboBoxTextClear cb = cellLayoutClear cb >> comboBoxSetModelText cb
 
+-- convenience functions
 whenIO condIO thenIO = condIO >>= (\ b -> if b then thenIO else return ())
-
 Arr a |-> str = maybe (Arr []) id (lookup (Str str) a)
-
 x $= v = writeIORef x v
 x $~ f = (f `fmap` readIORef x) >>= writeIORef x
 get x = readIORef x
 
+-- table of widget names mapped to internal stat names
 stathscales =
   [ ("strhscale", "STR")
   , ("agihscale", "AGI")
@@ -548,6 +567,7 @@ stathscales =
   , ("shadowhscale", "SHADOW_RES")
   , ("arcanehscale", "ARCANE_RES") ]
 
+-- table of SimulationCraft stat names mapped to our stat names
 simchscales =
   [ ("Str"      , "STR")                 
   , ("Agi"      , "AGI")                 
@@ -595,6 +615,7 @@ helpText = unlines
 firstTimeMsg = "Please configure the Warcraft Folder before proceeding."
 checkGuessMsg = "Please confirm that the Warcraft Folder is set correctly."
 
+-- list of folders to try
 possibleLocations = [ "C:\\Program Files (x86)\\World of Warcraft"
                     , "D:\\Program Files (x86)\\World of Warcraft"
                     , "C:\\Program Files\\World of Warcraft"
