@@ -15,6 +15,7 @@ settingsFile = ".considerguirc"
 gladeFile = "gui.glade"
 maxWeight = 25
 regionCodes = ["us","eu","tw","cn"]
+progressUpdateInterval = 100 -- msec
 
 defaultSettings = [ ("folder", "wow")
                   , ("account", "a1")
@@ -406,7 +407,7 @@ runSimC s = do
               textBufferInsertAtCursor tb s
               scrollToEnd
             return True
-  timeoutAdd progress 100
+  timeoutAdd progress progressUpdateInterval
   return ()
 
 comboBoxTextClear cb = cellLayoutClear cb >> comboBoxSetModelText cb
