@@ -16,7 +16,10 @@ gladeFile = "gui.glade"
 maxWeight = 25
 regionCodes = ["us","eu","tw","cn"]
 
-defaultSettings = [("folder", "wow"), ("account", "a1"), ("region", "us")]
+defaultSettings = [ ("folder", "wow")
+                  , ("account", "a1")
+                  , ("region", "us")
+                  , ("simcOptions", unlines ["iterations=10000"]) ]
 accountFolder d = d++"/WTF/Account"
 dbFile d a = accountFolder d ++ "/" ++ a ++ "/SavedVariables/Considerater.lua"
 
@@ -40,10 +43,14 @@ data GUI = GUI { guiW1 :: Window
                , guiCfgOkB
                , guiCfgCancelB
                , guiStatOkB
-               , guiStatCancelB :: Button
+               , guiStatCancelB
+               , guiSimCancelB
+               , guiSimApplyB :: Button
+               , guiSimSB :: Statusbar
                , guiStatScales :: [(String, HScale)]
                , guiHelpTV
-               , guiSimcOutTV :: TextView
+               , guiSimcOutTV
+               , guiSimcOptTV :: TextView
                , guiWoWFolderFC
                , guiSimCProgFC :: FileChooser
                }
@@ -128,20 +135,23 @@ loadGlade = do
   [accountCB, toonCB, profCB, regionCB] <- mapM (find castToComboBox)
     ["accountcombobox", "tooncombobox", "profcombobox", "regioncombobox"]
   [ editProfB, helpCloseB, statOkB, statCancelB, 
-    cfgOkB, cfgCancelB, simcB, simExecB, simStopB ]
+    cfgOkB, cfgCancelB, simcB, simExecB, simStopB,
+    simCancelB, simApplyB ]
     <- mapM (find castToButton)
     [ "editprofbutton", "helpclosebutton", "statok", "statcancel"
     , "configok", "configcancel", "simcbutton", "simexecbutton"
-    , "simstopbutton" ]
+    , "simstopbutton", "simcancelbutton", "simapplybutton" ]
   hscales <- forM stathscales $ \ (scaleName, statName) -> do
     s <- find castToHScale scaleName
     rangeSetRange s 0 maxWeight
     rangeSetIncrements s 0.1 1.0
     return (statName, s)
-  [simcOutTV, helpTV] <- mapM (find castToTextView)
-    ["simoutputtextview", "helptextview"]
+  [simcOptTV, simcOutTV, helpTV] <- mapM (find castToTextView)
+    ["simoptionstextview", "simoutputtextview", "helptextview"]
   [folderFC, simcFC] <- mapM (find castToFileChooser)
     ["wowfolderfilechooser", "simcfilechooser"]
+  [simSB] <- mapM (find castToStatusbar)
+    ["simstatusbar"]
   return $ GUI { guiW1          = w1
                , guiConfigD     = configD
                , guiHelpD       = helpD
@@ -159,6 +169,8 @@ loadGlade = do
                , guiSimcB       = simcB
                , guiSimExecB    = simExecB
                , guiSimStopB    = simStopB
+               , guiSimCancelB  = simCancelB
+               , guiSimApplyB   = simApplyB
                , guiStatOkB     = statOkB
                , guiStatCancelB = statCancelB
                , guiCfgOkB      = cfgOkB
@@ -166,8 +178,10 @@ loadGlade = do
                , guiStatScales  = hscales
                , guiHelpTV      = helpTV
                , guiSimcOutTV   = simcOutTV
+               , guiSimcOptTV   = simcOptTV
                , guiWoWFolderFC = folderFC
                , guiSimCProgFC  = simcFC
+               , guiSimSB       = simSB
                }
 
 connectGUI s = do
@@ -212,9 +226,24 @@ connectGUI s = do
   -- edit profile buttons
   guiEditProfB gui `onClicked` showStatDialog s
   guiStatCancelB gui `onClicked` widgetHide (guiStatD gui)
-  guiStatOkB gui `onClicked` saveStats s >> widgetHide (guiStatD gui)
-  guiSimcB gui `onClicked` widgetShow (guiSimcD gui)
+  guiStatOkB gui `onClicked` do
+    saveStats s
+    widgetHide (guiStatD gui)
+  -- simc buttons
+  guiSimcB gui `onClicked` do
+    simcOptions <- getSetting s "simcOptions"
+    optTB <- textViewGetBuffer (guiSimcOptTV gui)
+    textBufferSetText optTB simcOptions
+    widgetShow (guiSimcD gui)
   guiSimExecB gui `onClicked` runSimC s
+  guiSimCancelB gui `onClicked` widgetHide (guiSimcD gui)
+  widgetSetSensitive (guiSimApplyB gui) False
+  guiSimApplyB gui `onClicked` do
+    m_sf <- parseScaleFactors s
+    case m_sf of
+      Nothing -> return ()
+      Just sf -> setScaleFactors s sf
+    widgetHide (guiSimcD gui)
 
   -- help
   guiHelpTB gui `onToolButtonClicked` widgetShow (guiHelpD gui)
@@ -308,35 +337,50 @@ setScaleFactors s sf =
         let Just hs = lookup hsName (guiStatScales (stateGUI s))
         rangeSetValue hs w
 
-parseScaleFactors s tb = do
+parseScaleFactors s = do
+  let gui = stateGUI s
+  tb  <- textViewGetBuffer (guiSimcOutTV gui)
   end <- textBufferGetEndIter tb
   res <- textIterBackwardSearch end "Scale Factors:" [] Nothing
   case res of
-    Nothing -> putStrLn "scale factors not found"
+    Nothing     -> return Nothing
     Just (_, e) -> do
-      str <- textBufferGetText tb e end False
-      setScaleFactors s . normScaleFactors .
-        flip map (drop 1 (words str)) $ \ wstr ->
-          let (n,w) = break (=='=') wstr in (n,read (drop 1 w) :: Double)
+      strs <- (drop 1 . words) `fmap` textBufferGetText tb e end False
+      return . Just . normScaleFactors .
+        flip map strs $ \ str ->
+          let (n, w) = break (=='=') str in (n, read (drop 1 w))
 
 toonNameServer t = (head $ words t, last $ words t)
 
 runSimC s = do
   let gui = stateGUI s
-  tb <- textViewGetBuffer (guiSimcOutTV gui)
-  cursor <- textBufferGetInsert tb
+  cid     <- statusbarGetContextId (guiSimSB gui) "runsim"
+  tb      <- textViewGetBuffer (guiSimcOutTV gui)
+  textBufferSetText tb ""
+  cursor  <- textBufferGetInsert tb
   let scrollToEnd = textViewScrollToMark (guiSimcOutTV gui) cursor 0 (Just (1, 0))
-  region <- getSetting s "region"
-  toon <- getSetting s "toon"
+  region  <- getSetting s "region"
+  toon    <- getSetting s "toon"
   let (char, serv) = toonNameServer toon
   let armory = "armory="++region++","++serv++","++char
-  simc <- getSetting s "simc"
-  (_, Just hout, _, pid) <- createProcess (proc simc [armory,"iterations=100","calculate_scale_factors=1"]){ std_out = CreatePipe }
+  simc    <- getSetting s "simc"
+  optTB   <- textViewGetBuffer (guiSimcOptTV gui)
+  optBeg  <- textBufferGetStartIter optTB
+  optEnd  <- textBufferGetEndIter optTB
+  options <- textBufferGetText optTB optBeg optEnd False
+  setSetting s "simcOptions" options
+  widgetSetSensitive (guiSimApplyB gui) False
+  statusbarPop (guiSimSB gui) cid
+  statusbarPush (guiSimSB gui) cid "Running"
+  let csf = "calculate_scale_factors=1"
+  (_, Just hout, _, pid) <- createProcess (proc simc (armory:csf:lines options))
+                                          { std_out = CreatePipe }
   widgetSetSensitive (guiSimStopB gui) True
   widgetSetSensitive (guiSimExecB gui) False
   guiSimStopB gui `onClicked` do
     widgetSetSensitive (guiSimStopB gui) False
     widgetSetSensitive (guiSimExecB gui) True
+    statusbarPop (guiSimSB gui) cid
     terminateProcess pid
   let progress = handle ((\ _ -> return False) :: SomeException -> IO Bool) $ do
         code <- getProcessExitCode pid
@@ -345,9 +389,15 @@ runSimC s = do
             rest <- C8.unpack `fmap` C8.hGetContents hout
             textBufferInsertAtCursor tb rest
             scrollToEnd
-            parseScaleFactors s tb
             widgetSetSensitive (guiSimStopB gui) False
             widgetSetSensitive (guiSimExecB gui) True
+            statusbarPop (guiSimSB gui) cid
+            m_sf <- parseScaleFactors s
+            case m_sf of
+              Nothing -> widgetSetSensitive (guiSimApplyB gui) False >>
+                         statusbarPush (guiSimSB gui) cid "Failure"
+              Just _  -> widgetSetSensitive (guiSimApplyB gui) True >>
+                         statusbarPush (guiSimSB gui) cid "Success"
             return False
           Nothing -> do
             s <- C8.unpack `fmap` C8.hGetNonBlocking hout 64
