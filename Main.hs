@@ -308,6 +308,10 @@ refreshMainWin s = do
   comboBoxTextClear (guiToonCB gui)
   comboBoxTextClear (guiProfCB gui)
 
+  widgetSetSensitive (guiNewProfB gui) False
+  widgetSetSensitive (guiEditProfB gui) False
+  widgetSetSensitive (guiDelProfB gui) False
+
   wow <- getSetting s "folder"
   whenIO (doesDirectoryExist (accountFolder wow)) $ do
     accounts <- lsDir (accountFolder wow)
@@ -325,6 +329,7 @@ refreshMainWin s = do
       case findIndex (==toon) toons of
         Nothing -> setSetting s "toon" "" >> setSetting s "prof" ""
         Just i  -> do
+          widgetSetSensitive (guiNewProfB gui) True
           comboBoxSetActive (guiToonCB gui) i
           Str profKey <- (flip derefExpr [Str "profileKeys", Str toon] . fromJust) `fmap` get (db s)
           Arr profs <- (flip derefExpr [Str "profiles", Str profKey, Str "profiles"] . fromJust) `fmap` get (db s)
@@ -333,7 +338,11 @@ refreshMainWin s = do
           prof <- getSetting s "prof"
           case findIndex (==prof) profNames of
             Nothing -> setSetting s "prof" ""
-            Just i  -> comboBoxSetActive (guiProfCB gui) i
+            Just i  -> do
+              comboBoxSetActive (guiProfCB gui) i
+              widgetSetSensitive (guiEditProfB gui) True
+              widgetSetSensitive (guiDelProfB gui) True
+
 
 delStats s = do
   let gui = stateGUI s
