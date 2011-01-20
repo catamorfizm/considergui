@@ -17,9 +17,7 @@ maxWeight = 25
 regionCodes = ["us","eu","tw","cn"]
 progressUpdateInterval = 100 -- msec
 
-defaultSettings = [ ("folder", "")
-                  , ("account", "a1")
-                  , ("region", "us")
+defaultSettings = [ ("region", "us")
                   , ("simcOptions", unlines ["iterations=10000\nthreads=1"]) ]
 accountFolder d = d++"/WTF/Account"
 dbFile d a = accountFolder d ++ "/" ++ a ++ "/SavedVariables/Considerater.lua"
@@ -77,12 +75,17 @@ main = do
   wow <- getSetting s "folder"
   when (null wow) $ do
     flip timeoutAdd 100 $ do
+      m_folder <- guessFolder
+      msg <- case m_folder of
+        Just folder -> setSetting s "folder" folder >>
+                       return checkGuessMsg
+        Nothing     -> return firstTimeMsg
       d <- messageDialogNew (Just (guiW1 (stateGUI s)))
                             [DialogModal]
-                            MessageInfo ButtonsOk firstTimeMsg
+                            MessageInfo ButtonsOk msg
       dialogRun d
       widgetDestroy d
-      dialogRun (guiConfigD (stateGUI s))
+      showConfigDialog s
       return False
     return ()
   mainGUI
@@ -215,19 +218,14 @@ connectGUI s = do
   fileFilterAddPattern ff "simc"
   fileFilterAddPattern ff "simc.exe"
   fileChooserSetFilter (guiSimCProgFC gui) ff
-  guiConfigTB gui `onToolButtonClicked` do
-    folder <- getSetting s "folder"
-    fileChooserSetCurrentFolder (guiWoWFolderFC gui) folder
-    simc <- getSetting s "simc"
-    unless (null simc) $ fileChooserSetFilename (guiSimCProgFC gui) simc >> return ()
-    dialogRun (guiConfigD gui)
-    return ()
+  guiConfigTB gui `onToolButtonClicked` showConfigDialog s
   guiCfgCancelB gui `onClicked` widgetHide (guiConfigD gui)
   guiCfgOkB gui `onClicked` do
     m_folder <- fileChooserGetCurrentFolder (guiWoWFolderFC gui)
     m_simc <- fileChooserGetFilename (guiSimCProgFC gui)
     when (isJust m_folder) $ setSetting s "folder" (fromJust m_folder)
     when (isJust m_simc) $ setSetting s "simc" (fromJust m_simc)
+    refreshMainWin s
     widgetHide (guiConfigD gui)
   guiConfigD gui `windowSetTransientFor` guiW1 gui
   comboBoxTextClear (guiRegionCB gui)
@@ -361,6 +359,14 @@ refreshMainWin s = do
               widgetSetSensitive (guiEditProfB gui) True
               widgetSetSensitive (guiDelProfB gui) True
 
+showConfigDialog s = do
+  let gui = stateGUI s
+  folder <- getSetting s "folder"
+  fileChooserSetCurrentFolder (guiWoWFolderFC gui) folder
+  simc <- getSetting s "simc"
+  unless (null simc) $ fileChooserSetFilename (guiSimCProgFC gui) simc >> return ()
+  dialogRun (guiConfigD gui)
+  return ()
 
 delStats s = do
   let gui = stateGUI s
@@ -501,6 +507,10 @@ runSimC s = do
   timeoutAdd progress progressUpdateInterval
   return ()
 
+guessFolder =
+  (lookup True . flip zip possibleLocations) `fmap`
+  mapM doesDirectoryExist possibleLocations
+
 comboBoxTextClear cb = cellLayoutClear cb >> comboBoxSetModelText cb
 
 whenIO condIO thenIO = condIO >>= (\ b -> if b then thenIO else return ())
@@ -583,3 +593,6 @@ helpText = unlines
   , "this screen." ]
 
 firstTimeMsg = "Please configure the Warcraft Folder before proceeding."
+checkGuessMsg = "Please confirm that the Warcraft Folder is set correctly."
+
+possibleLocations = ["C:/Program Files (x86)/World of Warcraft", "wow"]
