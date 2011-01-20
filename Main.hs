@@ -420,6 +420,8 @@ showStatDialog s = do
         case lookup (Str stat) ptable of
           Just (Num x) -> rangeSetValue scale x
           Nothing      -> rangeSetValue scale 0
+      -- check if simc is present
+      getSetting s "simc" >>= doesFileExist >>= widgetSetSensitive (guiSimcB gui)
       widgetShow (guiStatD gui)
 
 -- save the changes made in the edit profile dialog
