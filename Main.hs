@@ -247,11 +247,23 @@ connectGUI s = do
         refreshMainWin s
     widgetHide (guiNewProfD gui)
   -- edit profile buttons
-  guiEditProfB gui `onClicked` showStatDialog s
+  guiEditProfB gui `onClicked` do
+    prof <- getSetting s "prof"
+    unless (null prof) $ showStatDialog s
   guiStatCancelB gui `onClicked` widgetHide (guiStatD gui)
   guiStatOkB gui `onClicked` do
     saveStats s
     widgetHide (guiStatD gui)
+  -- del profile button
+  guiDelProfB gui `onClicked` do
+    prof <- getSetting s "prof"
+    unless (null prof) $ do
+      delD <- messageDialogNew Nothing [] MessageQuestion ButtonsYesNo ("Delete "++prof++"?")
+      resp <- dialogRun delD
+      when (resp==ResponseYes) $ do
+        delStats s
+        refreshMainWin s
+      widgetDestroy delD
   -- simc buttons
   guiSimcB gui `onClicked` do
     simcOptions <- getSetting s "simcOptions"
@@ -300,7 +312,7 @@ refreshMainWin s = do
     account <- getSetting s "account"
     case findIndex (==account) accounts of
       Just i  -> comboBoxSetActive (guiAccountCB gui) i
-      Nothing -> return ()
+      Nothing -> setSetting s "account" "" >> setSetting s "toon" "" >> setSetting s "prof" ""
 
     whenIO (isJust `fmap` get (db s)) $ do
       Arr pkeys <- ((|-> "profileKeys") . fromJust) `fmap` get (db s)
@@ -308,7 +320,7 @@ refreshMainWin s = do
       forM_ toons $ comboBoxAppendText (guiToonCB gui)
       toon <- getSetting s "toon"
       case findIndex (==toon) toons of
-        Nothing -> return ()
+        Nothing -> setSetting s "toon" "" >> setSetting s "prof" ""
         Just i  -> do
           comboBoxSetActive (guiToonCB gui) i
           Str profKey <- (flip derefExpr [Str "profileKeys", Str toon] . fromJust) `fmap` get (db s)
@@ -317,8 +329,21 @@ refreshMainWin s = do
           forM_ profNames $ comboBoxAppendText (guiProfCB gui)
           prof <- getSetting s "prof"
           case findIndex (==prof) profNames of
-            Nothing -> return ()
+            Nothing -> setSetting s "prof" ""
             Just i  -> comboBoxSetActive (guiProfCB gui) i
+
+delStats s = do
+  let gui = stateGUI s
+  whenIO (isJust `fmap` get (db s)) $ do
+    toon <- getSetting s "toon"
+    prof <- getSetting s "prof"
+    when (not (null toon) && not (null prof)) $ do
+      d <- fromJust `fmap` get (db s)
+      let Str profKey = derefExpr d [Str "profileKeys", Str toon]
+      db s $~ \ (Just e) -> Just $ pruneExpr e [Str "profiles", Str profKey, Str "profiles", Str prof]
+      saveDB s
+      setSetting s "prof" ""
+      return ()
 
 copyStats s copyFrom = do
   let gui = stateGUI s
