@@ -20,7 +20,7 @@ progressUpdateInterval = 100 -- msec
 defaultSettings = [ ("folder", "wow")
                   , ("account", "a1")
                   , ("region", "us")
-                  , ("simcOptions", unlines ["iterations=10000"]) ]
+                  , ("simcOptions", unlines ["iterations=10000\nthreads=1"]) ]
 accountFolder d = d++"/WTF/Account"
 dbFile d a = accountFolder d ++ "/" ++ a ++ "/SavedVariables/Considerater.lua"
 
@@ -537,4 +537,29 @@ simchscales =
   , ("Dodge"    , "DODGE_RATING")        
   , ("Parry"    , "PARRY_RATING") ]
 
-helpText = "ConsiderGUI v1.0\n\nHelp\n"
+helpText = unlines
+  [ "ConsiderGUI Help\n"
+  , "The purpose of this tool is to help you manage your profiles while out-of-game."
+  , "The first step is to configure the tool by selecting Preferences and setting your"
+  , "Warcraft Folder to the appropriate location if it is not already correct. If you"
+  , "intend to use SimulationCraft then be sure to set that to the simc.exe file that"
+  , "you installed.  Finally be sure that your game region is set correctly.\n"
+  , "In the main window, you can select your playing account from the dropdown box, then"
+  , "the specific character you want to work with, and finally the profile list will"
+  , "become active.  At this point you may choose a profile and edit or delete it.  You"
+  , "may also create a new profile, with the option of copying settings from an existing"
+  , "profile.\n"
+  , "The edit profile screen allows you to adjust stat weights, or you may opt to run"
+  , "SimulationCraft to automatically adjust your stat weights.  If you have downloaded"
+  , "and installed SimulationCraft, and configured the location of simc.exe, then you can"
+  , "click on the \"Run SimulationCraft\" button.  This will bring up a dialog with some"
+  , "default options and an \"Execute\" button.  Click that button to start the simulation."
+  , "It will take some time, and it will display the output in the lower view.  You may"
+  , "click \"Stop\" if you want to end the simulation.   Once it succeeds then the \"Apply\""
+  , "button will become available.  Clicking this will automatically set stat weights"
+  , "according to the results of the simulation.  Remember to click \"Ok\" after reviewing"
+  , "the changes to the weights to save them permanently.\n"
+  , "SimulationCraft is a program with many advanced options, therefore, the options can"
+  , "be edited as plain text, line by line, in the provided space.  The default options"
+  , "should suffice for beginners, so if you are unsure, you can just click \"Execute\" at"
+  , "this screen." ]
