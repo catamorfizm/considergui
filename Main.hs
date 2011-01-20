@@ -202,7 +202,8 @@ connectGUI s = do
     fileChooserSetCurrentFolder (guiWoWFolderFC gui) folder
     simc <- getSetting s "simc"
     unless (null simc) $ fileChooserSetFilename (guiSimCProgFC gui) simc >> return ()
-    widgetShow (guiConfigD gui)
+    dialogRun (guiConfigD gui)
+    return ()
   guiCfgCancelB gui `onClicked` widgetHide (guiConfigD gui)
   guiCfgOkB gui `onClicked` do
     m_folder <- fileChooserGetCurrentFolder (guiWoWFolderFC gui)
