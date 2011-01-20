@@ -1,3 +1,4 @@
+import Prelude hiding (catch)
 import LuaParser
 import Data.List
 import Graphics.UI.Gtk hiding (get)
@@ -94,6 +95,7 @@ main = do
 
 -- list of dir contents
 lsDir dir = filter ((/= ".") . take 1) `fmap` getDirectoryContents dir
+  `catch` ((\ _ -> return []) :: SomeException -> IO [String])
 
 -- save/load/get/set for persistent settings
 saveSettings (S { settings = set }) = do
@@ -231,6 +233,7 @@ connectGUI s = do
     m_simc <- fileChooserGetFilename (guiSimCProgFC gui)
     when (isJust m_folder) $ setSetting s "folder" (fromJust m_folder)
     when (isJust m_simc) $ setSetting s "simc" (fromJust m_simc)
+    sanityCheckFolder s
     refreshMainWin s
     widgetHide (guiConfigD gui)
   guiConfigD gui `windowSetTransientFor` guiW1 gui
@@ -530,6 +533,24 @@ runSimC s = do
 guessFolder =
   (lookup True . flip zip possibleLocations) `fmap`
   mapM doesDirectoryExist possibleLocations
+
+-- show a quick dialog box with an error message
+showErrMsg msg = do
+  d <- messageDialogNew Nothing
+                        [DialogModal]
+                        MessageError ButtonsClose msg
+  dialogRun d
+  widgetDestroy d
+
+-- do some basic checks on specified folder, show error messages if it
+-- fails any of the checks
+sanityCheckFolder s = do
+  wow <- getSetting s "folder"
+  accounts <- if null wow then return [] else lsDir (accountFolder wow)
+  case accounts of
+    [] -> showErrMsg "Could not find any accounts in specified Warcraft folder."
+    as -> whenIO ((not . or) `fmap` mapM (doesFileExist . dbFile wow) as) $ do
+            showErrMsg "Unable to detect presence of Considerater Addon in specified Warcraft folder."
 
 -- clear a Text-only combobox (should be part of Gtk2hs IMO)
 comboBoxTextClear cb = cellLayoutClear cb >> comboBoxSetModelText cb
