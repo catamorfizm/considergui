@@ -19,7 +19,7 @@ regionCodes = ["us","eu","tw","cn"]
 progressUpdateInterval = 100 -- msec
 
 defaultSettings = [ ("region", "us")
-                  , ("simcOptions", unlines ["iterations=10000\nthreads=1"]) ]
+                  , ("simcOptions", unlines ["iterations=10000\nthreads=1\nskill=0.8"]) ]
 accountFolder d = d++"/WTF/Account"
 dbFile d a = accountFolder d ++ "/" ++ a ++ "/SavedVariables/Considerater.lua"
 
@@ -464,7 +464,8 @@ parseScaleFactors s = do
   case res of
     Nothing     -> return Nothing
     Just (_, e) -> do
-      strs <- (drop 1 . words) `fmap` textBufferGetText tb e end False
+      ls <- lines `fmap` textBufferGetText tb e end False
+      let strs = drop 1 . words . last . filter (not . null) $ ls
       return . Just . normScaleFactors .
         flip map strs $ \ str ->
           let (n, w) = break (=='=') str in (n, read (drop 1 w))
@@ -633,7 +634,8 @@ helpText = unlines
   , "SimulationCraft is a program with many advanced options, therefore, the options can"
   , "be edited as plain text, line by line, in the provided space.  The default options"
   , "should suffice for beginners, so if you are unsure, you can just click \"Execute\" at"
-  , "this screen." ]
+  , "this screen.  SimulationCraft gets all of its character-specific data from the"
+  , "Warcraft Armory, so it is only as good as that information is." ]
 
 firstTimeMsg = "Please configure the Warcraft Folder before proceeding."
 checkGuessMsg = "Please confirm that the Warcraft Folder is set correctly."
