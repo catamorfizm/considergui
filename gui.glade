@@ -203,7 +203,6 @@
   <object class="GtkAccelGroup" id="accelgroup1"/>
   <object class="GtkDialog" id="configdialog">
     <property name="border_width">5</property>
-    <property name="type">popup</property>
     <property name="title" translatable="yes">Configuration</property>
     <property name="type_hint">normal</property>
     <property name="has_separator">False</property>
@@ -332,9 +331,7 @@
     <property name="width_request">480</property>
     <property name="height_request">640</property>
     <property name="border_width">5</property>
-    <property name="type">popup</property>
     <property name="title" translatable="yes">Profile</property>
-    <property name="window_position">center-on-parent</property>
     <property name="type_hint">normal</property>
     <property name="has_separator">False</property>
     <child internal-child="vbox">
@@ -558,7 +555,7 @@
                     <child>
                       <object class="GtkLabel" id="label14">
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">DPS</property>
+                        <property name="label" translatable="yes">Weapon DPS</property>
                       </object>
                     </child>
                     <child>
@@ -1036,7 +1033,6 @@
     <property name="width_request">640</property>
     <property name="height_request">480</property>
     <property name="border_width">5</property>
-    <property name="type">popup</property>
     <property name="title" translatable="yes">Simulate</property>
     <property name="type_hint">normal</property>
     <property name="has_separator">False</property>
