@@ -359,7 +359,7 @@ refreshMainWin s = do
           comboBoxSetActive (guiToonCB gui) i
           Str profKey <- (flip derefExpr [Str "profileKeys", Str toon] . fromJust) `fmap` get (db s)
           Arr profs <- (flip derefExpr [Str "profiles", Str profKey, Str "profiles"] . fromJust) `fmap` get (db s)
-          let profNames = flip map profs $ \ (Str name, _) -> name
+          let profNames = sort . flip map profs $ \ (Str name, _) -> name
           forM_ profNames $ comboBoxAppendText (guiProfCB gui)
           prof <- getSetting s "prof"
           case findIndex (==prof) profNames of
