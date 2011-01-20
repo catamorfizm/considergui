@@ -17,7 +17,7 @@ maxWeight = 25
 regionCodes = ["us","eu","tw","cn"]
 progressUpdateInterval = 100 -- msec
 
-defaultSettings = [ ("folder", "wow")
+defaultSettings = [ ("folder", "")
                   , ("account", "a1")
                   , ("region", "us")
                   , ("simcOptions", unlines ["iterations=10000\nthreads=1"]) ]
@@ -74,6 +74,17 @@ main = do
   loadSettings s                  -- load saved settings
   connectGUI s                    -- setup signals
   widgetShow (guiW1 (stateGUI s)) -- show main window
+  wow <- getSetting s "folder"
+  when (null wow) $ do
+    flip timeoutAdd 100 $ do
+      d <- messageDialogNew (Just (guiW1 (stateGUI s)))
+                            [DialogModal]
+                            MessageInfo ButtonsOk firstTimeMsg
+      dialogRun d
+      widgetDestroy d
+      dialogRun (guiConfigD (stateGUI s))
+      return False
+    return ()
   mainGUI
   return ()
 
@@ -563,3 +574,5 @@ helpText = unlines
   , "be edited as plain text, line by line, in the provided space.  The default options"
   , "should suffice for beginners, so if you are unsure, you can just click \"Execute\" at"
   , "this screen." ]
+
+firstTimeMsg = "Please configure the Warcraft Folder before proceeding."
