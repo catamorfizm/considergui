@@ -595,4 +595,7 @@ helpText = unlines
 firstTimeMsg = "Please configure the Warcraft Folder before proceeding."
 checkGuessMsg = "Please confirm that the Warcraft Folder is set correctly."
 
-possibleLocations = ["C:/Program Files (x86)/World of Warcraft", "wow"]
+possibleLocations = [ "C:\\Program Files (x86)\\World of Warcraft"
+                    , "D:\\Program Files (x86)\\World of Warcraft"
+                    , "C:\\Program Files\\World of Warcraft"
+                    , "D:\\Program Files\\World of Warcraft" ]
