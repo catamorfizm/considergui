@@ -225,7 +225,6 @@
             <child>
               <object class="GtkFileChooserButton" id="wowfolderfilechooser">
                 <property name="visible">True</property>
-                <property name="create_folders">False</property>
                 <property name="action">select-folder</property>
                 <property name="show_hidden">True</property>
               </object>
@@ -1256,7 +1255,6 @@
   </object>
   <object class="GtkDialog" id="helpdialog">
     <property name="border_width">5</property>
-    <property name="type">popup</property>
     <property name="title" translatable="yes">Help</property>
     <property name="type_hint">normal</property>
     <property name="has_separator">False</property>
@@ -1308,7 +1306,6 @@
   </object>
   <object class="GtkDialog" id="newprofdialog">
     <property name="border_width">5</property>
-    <property name="type">popup</property>
     <property name="title" translatable="yes">Create New Profile</property>
     <property name="modal">True</property>
     <property name="type_hint">normal</property>

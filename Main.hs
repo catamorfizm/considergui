@@ -1,6 +1,7 @@
 import Prelude hiding (catch)
 import LuaParser
 import Data.List
+import Data.Char
 import Graphics.UI.Gtk hiding (get)
 import Data.IORef
 import Control.Exception
@@ -454,9 +455,9 @@ saveStats s = do
     prof <- getSetting s "prof"
     when (not (null toon) && not (null prof)) $ do
       Str profKey <- (flip derefExpr [Str "profileKeys", Str toon] . fromJust) `fmap` get (db s)
-      newTable <- forM (guiStatScales gui) $ \ (stat, scale) -> do
+      newTable <- (concat `fmap`) . forM (guiStatScales gui) $ \ (stat, scale) -> do
         x <- rangeGetValue scale
-        return (Str stat, Num x)
+        if x /= 0 then return [(Str stat, Num x)] else return []
       db s $~ \ (Just e) -> Just $ modifyExpr e [Str "profiles", Str profKey, Str "profiles", Str prof] (Arr newTable)
       saveDB s
       return ()
@@ -484,7 +485,7 @@ parseScaleFactors s = do
     Nothing     -> return Nothing
     Just (_, e) -> do
       ls <- lines `fmap` textBufferGetText tb e end False
-      let strs = drop 1 . words . last . filter (not . null) $ ls
+      let strs = drop 1 . words . last . filter (any isAlpha) $ ls
       return . Just . normScaleFactors .
         flip map strs $ \ str ->
           let (n, w) = break (=='=') str in (n, read (drop 1 w))
@@ -514,7 +515,7 @@ runSimC s = do
   setSetting s "simspec" spec
   widgetSetSensitive (guiSimApplyB gui) False
   statusbarPop (guiSimSB gui) cid
-  statusbarPush (guiSimSB gui) cid "Running"
+  statusbarPush (guiSimSB gui) cid "Running (this may take a while)..."
   let csf = "calculate_scale_factors=1"
   (_, Just hout, _, pid) <- createProcess (proc simc (armory:csf:lines options))
                                           { std_out = CreatePipe }
