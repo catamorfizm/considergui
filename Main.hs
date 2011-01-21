@@ -662,7 +662,9 @@ firstTimeMsg = "Please configure the Warcraft Folder before proceeding."
 checkGuessMsg = "Please confirm that the Warcraft Folder is set correctly."
 
 -- list of folders to try
-possibleLocations = [ "C:\\Program Files (x86)\\World of Warcraft"
-                    , "D:\\Program Files (x86)\\World of Warcraft"
-                    , "C:\\Program Files\\World of Warcraft"
-                    , "D:\\Program Files\\World of Warcraft" ]
+possibleLocations = [ joinDrive "C:\\" ("Program Files (x86)" </> "World of Warcraft")
+                    , joinDrive "D:\\" ("Program Files (x86)" </> "World of Warcraft")
+                    , joinDrive "C:\\" ("Program Files" </> "World of Warcraft")
+                    , joinDrive "D:\\" ("Program Files" </> "World of Warcraft")
+                    , joinDrive "C:\\" "World of Warcraft"
+                    , joinDrive "D:\\" "World of Warcraft" ]
