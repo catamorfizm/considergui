@@ -8,6 +8,6 @@ clean:
 
 dist:
 	mkdir -p ConsiderGUI-`cat VERSION`
-	cp ConsiderGUI.exe *.dll gui.glade LuaParser.hs Main.hs Makefile VERSION \
+	cp ConsiderGUI.exe *.dll gui.glade LuaParser.hs Main.hs Makefile VERSION GPL-3 \
 		ConsiderGUI-`cat VERSION`
-	zip -r ConsiderGUI-`cat VERSION`.zip ConsiderGUI-`cat VERSION`
+	zip -r ConsiderGUI-`cat VERSION`.zip ConsiderGUI-`cat VERSION`/
