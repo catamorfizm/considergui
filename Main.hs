@@ -7,12 +7,14 @@ import Control.Exception
 import Control.Monad
 import Control.Concurrent
 import System.Directory
+import System.FilePath
 import System.Process
 import System.IO
 import Data.Maybe
 import qualified Data.ByteString.Char8 as C8
 
-settingsFile = ".considerguirc"
+appName = "ConsiderGUI"
+settingsFile = "settings"
 gladeFile = "gui.glade"
 maxWeight = 25
 regionCodes = ["us","eu","tw","cn"]
@@ -21,8 +23,8 @@ progressUpdateInterval = 100 -- msec
 defaultSettings = [ ("region", "us")
                   , ("simspec", "primary")
                   , ("simcOptions", unlines ["iterations=10000\nthreads=1\nskill=0.8"]) ]
-accountFolder d = d++"/WTF/Account"
-dbFile d a = accountFolder d ++ "/" ++ a ++ "/SavedVariables/Considerater.lua"
+accountFolder d = d </> "WTF" </> "Account"
+dbFile d a = accountFolder d </> a </> "SavedVariables" </> "Considerater" <.> "lua"
 
 data GUI = GUI { guiW1 :: Window
                , guiConfigD
@@ -99,14 +101,23 @@ main = do
 lsDir dir = filter ((/= ".") . take 1) `fmap` getDirectoryContents dir
   `catch` ((\ _ -> return []) :: SomeException -> IO [String])
 
+-- figure out application settings folder
+appSettingsFolder = do
+  f <- getAppUserDataDirectory appName
+  createDirectoryIfMissing True f
+  return f
+  `catch` ((\ _ -> return "") :: SomeException -> IO FilePath)
+
 -- save/load/get/set for persistent settings
 saveSettings (S { settings = set }) = do
+  f <- appSettingsFolder
   v <- get set
-  C8.writeFile settingsFile (C8.pack $ show v)
+  C8.writeFile (f </> settingsFile) (C8.pack $ show v)
 
 loadSettings (S { settings = set }) =
   handle ((\ _ -> return ()) :: SomeException -> IO ()) $ do
-    v <- (read . C8.unpack) `fmap` C8.readFile settingsFile
+    f <- appSettingsFolder
+    v <- (read . C8.unpack) `fmap` C8.readFile (f </> settingsFile)
     set $= v
 
 getSetting (S { settings = set }) name = do
