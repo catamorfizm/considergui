@@ -1,0 +1,36 @@
+ConsiderGUI
+===========
+
+This is a small helper program to manage your Considerater profiles
+out of game.  It also allows you to run SimulationCraft to generate a
+profile.
+
+Installation
+------------
+
+For most users you should obtain the ZIP file with the binary EXE file
+and just unpack it anywhere and run it.  It contains all the libraries
+needed to run, and it will ask you for a couple of configuration
+options at the start.
+
+Compilation
+-----------
+
+If, for some reason, you want to compile your own copy, then here's
+what you need to do:
+
+* Install the Haskell Platform http://hackage.haskell.org/platform/
+  - Add the included "mingw\bin" folder to your PATH environment variable.
+    e.g. C:\Program Files\Haskell Platform\2010.2.0.0\mingw\bin
+* GTK+ (I used the all-in-one bundle v2.16) http://www.gtk.org/download-windows.html
+  - Extract the bundle to a directory (like C:\GTK-2.16)
+  - Add C:\GTK-2.16\BIN to your PATH environment variable.
+* Open a command line (e.g. cmd.exe)
+  - Run: cabal update
+  - Run: cabal install gtk2hs-buildtools
+  - Run: cabal install gtk
+* With the command line in the ConsiderGUI folder
+  - Run: ghc --make Main -o ConsiderGUI
+
+Instructions are based upon the following article:
+http://jystic.com/2010/10/20/installing-gtk2hs-on-windows/
