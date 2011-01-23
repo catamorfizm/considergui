@@ -5,6 +5,9 @@ This is a small helper program to manage your Considerater profiles
 out of game.  It also allows you to run SimulationCraft to generate a
 profile.
 
+SimulationCraft http://code.google.com/p/simulationcraft/
+Considerater    http://wow.curse.com/downloads/wow-addons/details/considerater.aspx
+
 Installation
 ------------
 
@@ -12,6 +15,12 @@ For most users you should obtain the ZIP file with the binary EXE file
 and just unpack it anywhere and run it.  It contains all the libraries
 needed to run, and it will ask you for a couple of configuration
 options at the start.
+
+To use SimulationCraft you should download and unpack the
+SimulationCraft ZIP file.  Then in the Preferences of ConsiderGUI you
+can select the SIMC.EXE file that is found in the SimulationCraft
+folder.  Now you can use the button in the Edit Profile window to run
+simulations.
 
 Compilation
 -----------
